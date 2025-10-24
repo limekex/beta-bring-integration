@@ -4,7 +4,7 @@
  * Plugin URI:  https://example.com/beta-bring-integration
  * Description: Bring booking integration for WooCommerce — book shipments and fetch labels from the order screen.
  * Version:     0.1.0
- * Author:      BeTA
+ * Author:      BeTA iT
  * Requires at least: 6.3
  * Requires PHP: 8.1
  * WC tested up to: 8.9
