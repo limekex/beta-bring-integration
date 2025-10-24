@@ -1,0 +1,39 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: BeTA Bring Integration 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-10-24 00:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: includes/Admin/OrderMetaBox.php:12
+msgid "Bring booking"
+msgstr ""
+
+#: includes/Admin/OrderMetaBox.php:27
+msgid "Preset"
+msgstr ""
+
+#: includes/Admin/OrderMetaBox.php:38
+msgid "Weight (kg): %s"
+msgstr ""
+
+#: includes/Admin/OrderMetaBox.php:40
+msgid "Book shipment"
+msgstr ""
+
+#: includes/Admin/OrderMetaBox.php:46
+msgid "Consignment no: %s"
+msgstr ""
+
+#: includes/Admin/OrderMetaBox.php:48
+msgid "Download label (PDF)"
+msgstr ""
+
+#: includes/Admin/OrderMetaBox.php:51
+msgid "Copy tracking link"
+msgstr ""

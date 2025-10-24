@@ -1,0 +1,5 @@
+/* Minimal admin styles for BeTA Bring Integration */
+#bbi_booking .inside { padding: 8px; }
+#bbi_status p { margin: 8px 0; }
+#bbi_book_btn { width: 100%; }
+.bbi-copy-tracking { margin-top: 6px; }
