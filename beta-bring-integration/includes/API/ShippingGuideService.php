@@ -31,7 +31,7 @@ class ShippingGuideService {
 	 * @param array    $opts         Optional overrides:
 	 *   - fromcountry  (default: sender country from settings, e.g. NO)
 	 *   - tocountry    (default: NO)
-	 *   - weightInGrams (int)
+	 *   - weight       (int, grams)
 	 *   - volumeInDm3  (float)
 	 *   - language     (NO|EN|DK|SE|FI)
 	 * @return array  Decoded API response, or ['error' => '...'] on failure.

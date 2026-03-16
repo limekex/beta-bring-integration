@@ -202,9 +202,9 @@ class ShippingMethod extends \WC_Shipping_Method {
 
 		$query_args = array_filter(
 			[
-				'fromcountry'   => $from_country,
-				'tocountry'     => $to_country,
-				'weightInGrams' => $weight_grams > 0 ? (string) $weight_grams : '',
+				'fromcountry' => $from_country,
+				'tocountry'   => $to_country,
+				'weight'      => $weight_grams > 0 ? (string) $weight_grams : '',
 			],
 			fn( string $v ): bool => '' !== $v
 		);
