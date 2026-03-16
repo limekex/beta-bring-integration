@@ -6,6 +6,7 @@ use BeTA\Bring\Admin\OrderMetaBox;
 use BeTA\Bring\Admin\OrderListColumns;
 use BeTA\Bring\Admin\Notices;
 use BeTA\Bring\Woo\BulkBooking;
+use BeTA\Bring\Woo\ShippingMethod;
 use BeTA\Bring\API\Routes;
 
 class Plugin {
@@ -31,8 +32,10 @@ class Plugin {
 		// Admin assets.
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
 
-		// Admin init.
-		add_action( 'admin_init', [ Settings::class, 'init' ] );
+		// Settings filters must be registered before WooCommerce processes
+		// settings saves (which happens on admin_init). Using the earlier
+		// 'init' hook guarantees the filters are in place in time.
+		add_action( 'init', [ Settings::class, 'init' ] );
 
 		// Meta box (single order detail page).
 		add_action( 'add_meta_boxes', [ OrderMetaBox::class, 'register_meta_box' ] );
@@ -43,6 +46,12 @@ class Plugin {
 
 		// Bulk booking.
 		BulkBooking::init();
+
+		// Register Bring as a WooCommerce shipping method (for checkout rate display).
+		add_filter( 'woocommerce_shipping_methods', static function ( array $methods ): array {
+			$methods['bbi_bring'] = ShippingMethod::class;
+			return $methods;
+		} );
 
 		// REST routes.
 		add_action( 'rest_api_init', [ Routes::class, 'register_routes' ] );
