@@ -54,6 +54,13 @@ class BookingService {
             ]],
         ];
 
+        // Attach pickup point when provided (e.g. SERVICEPAKKE / hent i butikk).
+        if ( ! empty( $params['pickup_point_id'] ) ) {
+            $payload['consignments'][0]['parties']['pickupPoint'] = [
+                'id' => (string) $params['pickup_point_id'],
+            ];
+        }
+
         Logger::info( 'Booking request', [ 'order' => $order_id, 'payload' => $payload ] );
 
         // Simulate if in test mode and missing credentials
