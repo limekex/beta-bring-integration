@@ -114,7 +114,7 @@ class ShippingMethod extends \WC_Shipping_Method {
 			/** @var \WC_Product $product */
 			$product = $item['data'];
 			if ( $product instanceof \WC_Product && $product->has_weight() ) {
-				$converted = wc_get_weight( $product->get_weight(), 'kg' );
+				$converted = wc_get_weight( (float) $product->get_weight(), 'kg' );
 				if ( false !== $converted ) {
 					$weight_kg += (float) $converted * $item['quantity'];
 				}
@@ -123,8 +123,11 @@ class ShippingMethod extends \WC_Shipping_Method {
 
 		$weight_grams = (int) round( $weight_kg * 1000 );
 
-		// Index API products by service ID (with transient caching).
-		$api_products = $this->get_api_products( $from_postal, $from_country, $to_postal, $to_country, $weight_grams, $service_ids );
+		// When no cart item has a weight configured, skip the live rate query entirely
+		// and fall through to the fallback cost below (the API requires weight or dimensions).
+		$api_products = $weight_grams > 0
+			? $this->get_api_products( $from_postal, $from_country, $to_postal, $to_country, $weight_grams, $service_ids )
+			: [];
 
 		$fallback = $this->get_option( 'fallback_cost' );
 
