@@ -20,7 +20,7 @@ class ShippingMethod extends \WC_Shipping_Method {
 	/** Cache TTL for Bring API responses (seconds). */
 	private const CACHE_TTL = 900; // 15 minutes
 
-	private SettingsModel      $settings;
+	private SettingsModel        $bbi_settings;
 	private ShippingGuideService $guide;
 
 	public function __construct( int $instance_id = 0 ) {
@@ -30,8 +30,8 @@ class ShippingMethod extends \WC_Shipping_Method {
 		$this->method_description = __( 'Show live Bring shipping rates at checkout, based on presets configured under WooCommerce → Settings → Shipping → BeTA Bring.', 'bbi' );
 		$this->supports           = [ 'shipping-zones', 'instance-settings' ];
 
-		$this->settings = new SettingsModel();
-		$this->guide    = new ShippingGuideService( $this->settings );
+		$this->bbi_settings = new SettingsModel();
+		$this->guide        = new ShippingGuideService( $this->bbi_settings );
 
 		$this->init();
 	}
@@ -78,13 +78,13 @@ class ShippingMethod extends \WC_Shipping_Method {
 	 * @param array $package WooCommerce package array.
 	 */
 	public function calculate_shipping( $package = [] ): void {
-		$presets = $this->settings->get_presets();
+		$presets = $this->bbi_settings->get_presets();
 
 		if ( empty( $presets ) ) {
 			return;
 		}
 
-		$sender       = $this->settings->get_sender_array();
+		$sender       = $this->bbi_settings->get_sender_array();
 		$from_postal  = $sender['postcode'] ?? '';
 		$from_country = $sender['country'] ?? 'NO';
 		$to_postal    = $package['destination']['postcode'] ?? '';
