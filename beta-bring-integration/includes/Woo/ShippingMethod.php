@@ -94,6 +94,20 @@ class ShippingMethod extends \WC_Shipping_Method {
 			return;
 		}
 
+		// Collect the Bring service IDs referenced by the configured presets.
+		$service_ids = [];
+		foreach ( $presets as $preset ) {
+			$sid = $preset['serviceId'] ?? $preset['serviceID'] ?? '';
+			if ( $sid ) {
+				$service_ids[] = $sid;
+			}
+		}
+		$service_ids = array_values( array_unique( $service_ids ) );
+
+		if ( empty( $service_ids ) ) {
+			return;
+		}
+
 		// Calculate total package weight in kg.
 		$weight_kg = 0.0;
 		foreach ( $package['contents'] as $item ) {
@@ -110,7 +124,7 @@ class ShippingMethod extends \WC_Shipping_Method {
 		$weight_grams = (int) round( $weight_kg * 1000 );
 
 		// Index API products by service ID (with transient caching).
-		$api_products = $this->get_api_products( $from_postal, $from_country, $to_postal, $to_country, $weight_grams );
+		$api_products = $this->get_api_products( $from_postal, $from_country, $to_postal, $to_country, $weight_grams, $service_ids );
 
 		$fallback = $this->get_option( 'fallback_cost' );
 
@@ -163,11 +177,12 @@ class ShippingMethod extends \WC_Shipping_Method {
 	 * Fetch products from the Bring Shipping Guide API, using a transient
 	 * cache keyed by the route and weight to avoid redundant API calls.
 	 *
-	 * @param string $from_postal  Sender postal code.
-	 * @param string $from_country Sender country code (ISO 3166-1 alpha-2).
-	 * @param string $to_postal    Recipient postal code.
-	 * @param string $to_country   Recipient country code.
-	 * @param int    $weight_grams Package weight in grams (0 = omit from query).
+	 * @param string   $from_postal  Sender postal code.
+	 * @param string   $from_country Sender country code (ISO 3166-1 alpha-2).
+	 * @param string   $to_postal    Recipient postal code.
+	 * @param string   $to_country   Recipient country code.
+	 * @param int      $weight_grams Package weight in grams (0 = omit from query).
+	 * @param string[] $service_ids  Bring service IDs to query.
 	 * @return array<string, array> Products indexed by service ID.
 	 */
 	private function get_api_products(
@@ -175,9 +190,10 @@ class ShippingMethod extends \WC_Shipping_Method {
 		string $from_country,
 		string $to_postal,
 		string $to_country,
-		int $weight_grams
+		int $weight_grams,
+		array $service_ids = []
 	): array {
-		$cache_key = 'bbi_sg_' . md5( implode( '|', [ $from_postal, $from_country, $to_postal, $to_country, $weight_grams ] ) );
+		$cache_key = 'bbi_sg_' . md5( implode( '|', [ $from_postal, $from_country, $to_postal, $to_country, $weight_grams, implode( ',', $service_ids ) ] ) );
 
 		$cached = get_transient( $cache_key );
 		if ( is_array( $cached ) ) {
@@ -186,14 +202,14 @@ class ShippingMethod extends \WC_Shipping_Method {
 
 		$query_args = array_filter(
 			[
-				'fromcountrycode' => $from_country,
-				'tocountrycode'   => $to_country,
-				'weightInGrams'   => $weight_grams > 0 ? (string) $weight_grams : '',
+				'fromcountry'   => $from_country,
+				'tocountry'     => $to_country,
+				'weightInGrams' => $weight_grams > 0 ? (string) $weight_grams : '',
 			],
 			fn( string $v ): bool => '' !== $v
 		);
 
-		$api_data = $this->guide->get_products( $from_postal, $to_postal, $query_args );
+		$api_data = $this->guide->get_products( $from_postal, $to_postal, $service_ids, $query_args );
 
 		$indexed = [];
 		if ( ! empty( $api_data['products'] ) && is_array( $api_data['products'] ) ) {
