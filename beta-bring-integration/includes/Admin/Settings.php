@@ -126,6 +126,14 @@ class Settings {
                 'default'  => 'no',
             ],
             [
+                'title'    => __( 'Debug mode', 'bbi' ),
+                'id'       => 'bbi_debug_mode',
+                'type'     => 'checkbox',
+                'desc'     => __( 'When enabled, all Bring API requests and responses are written to the WooCommerce log (WooCommerce → Status → Logs, source: bbi). Disable in production.', 'bbi' ),
+                'desc_tip' => true,
+                'default'  => 'no',
+            ],
+            [
                 'title'    => __( 'Default preset key', 'bbi' ),
                 'id'       => 'bbi_default_preset_key',
                 'type'     => 'text',

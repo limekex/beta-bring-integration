@@ -18,6 +18,10 @@ class SettingsModel {
         return 'yes' === get_option( 'bbi_test_mode', 'no' );
     }
 
+    public function is_debug_mode(): bool {
+        return 'yes' === get_option( 'bbi_debug_mode', 'no' );
+    }
+
     public function get_default_preset_key(): ?string {
         return get_option( 'bbi_default_preset_key', '' ) ?: null;
     }

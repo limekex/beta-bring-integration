@@ -61,7 +61,7 @@ class BookingService {
             ];
         }
 
-        Logger::info( 'Booking request', [ 'order' => $order_id, 'payload' => $payload ] );
+        Logger::debug( 'Booking request', [ 'order' => $order_id, 'payload' => $payload ] );
 
         // Simulate if in test mode and missing credentials
         if ( $this->settings->is_test_mode() && ( ! $this->settings->get_uid() || ! $this->settings->get_api_key() ) ) {
