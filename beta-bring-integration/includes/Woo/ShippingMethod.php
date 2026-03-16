@@ -100,7 +100,10 @@ class ShippingMethod extends \WC_Shipping_Method {
 			/** @var \WC_Product $product */
 			$product = $item['data'];
 			if ( $product instanceof \WC_Product && $product->has_weight() ) {
-				$weight_kg += (float) wc_get_weight( $product->get_weight(), 'kg' ) * $item['quantity'];
+				$converted = wc_get_weight( $product->get_weight(), 'kg' );
+				if ( false !== $converted ) {
+					$weight_kg += (float) $converted * $item['quantity'];
+				}
 			}
 		}
 
