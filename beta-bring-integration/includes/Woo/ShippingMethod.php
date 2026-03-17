@@ -382,6 +382,6 @@ class ShippingMethod extends \WC_Shipping_Method {
 				. '</span>';
 		}
 
-		return $extra ? $label . $extra : $label;
+		return $extra ? $label . '<span class="bbi-shipping-details">' . $extra . '</span>' : $label;
 	}
 }

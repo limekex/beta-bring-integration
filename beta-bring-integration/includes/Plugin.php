@@ -73,6 +73,7 @@ class Plugin {
 		// Only load on cart and checkout pages.
 		if ( function_exists( 'is_cart' ) && ( is_cart() || is_checkout() ) ) {
 			wp_enqueue_style( 'bbi-checkout', BBI_URL . 'assets/css/checkout.css', [], BBI_VER );
+			wp_enqueue_script( 'bbi-checkout', BBI_URL . 'assets/js/checkout.js', [ 'jquery' ], BBI_VER, true );
 		}
 	}
 

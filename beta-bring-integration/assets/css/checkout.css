@@ -1,25 +1,83 @@
 /* Bring shipping rate label enhancements – cart & checkout */
 
+/* ── Logo ──────────────────────────────────────────────────── */
 .bbi-shipping-logo {
-	display: block;
-	max-height: 24px;
+	display: inline-block;
+	max-height: 26px;
 	width: auto;
-	margin-bottom: 4px;
+	vertical-align: middle;
+	margin-right: 6px;
 }
 
-.bbi-delivery-estimate,
-.bbi-shipping-desc,
+/* ── Delivery estimate (inline beside logo) ─────────────────── */
+.bbi-delivery-estimate {
+	display: inline-block;
+	font-size: 0.82em;
+	color: #555;
+	font-style: italic;
+	vertical-align: middle;
+}
+
+/* ── Description & pickup point (block below) ──────────────── */
+.bbi-shipping-desc {
+	display: block;
+	font-size: 0.82em;
+	color: #777;
+	margin-top: 4px;
+	line-height: 1.4;
+}
+
 .bbi-pickup-hint {
 	display: block;
-	font-size: 0.85em;
-	color: #555;
-	margin-top: 2px;
-}
-
-.bbi-delivery-estimate {
-	font-style: italic;
-}
-
-.bbi-pickup-hint {
+	font-size: 0.82em;
 	font-weight: 600;
+	color: #444;
+	margin-top: 4px;
+}
+
+/* ── Details panel ─────────────────────────────────────────── */
+/*  Hidden by default; revealed via CSS for the selected option  */
+/*  and via JS after a change event for instant feedback.         */
+.bbi-shipping-details {
+	display: none;
+	margin-top: 8px;
+	padding: 8px 0 2px;
+	border-top: 1px solid #eee;
+	animation: bbi-fade-in 0.18s ease;
+}
+
+@keyframes bbi-fade-in {
+	from { opacity: 0; }
+	to   { opacity: 1; }
+}
+
+@media ( prefers-reduced-motion: no-preference ) {
+	@keyframes bbi-fade-in {
+		from { opacity: 0; transform: translateY( -4px ); }
+		to   { opacity: 1; transform: translateY( 0 ); }
+	}
+}
+
+/* Reveal details for whichever radio is currently checked.
+   Works because WooCommerce renders: <input> immediately followed by <label>. */
+input[name^="shipping_method"]:checked + label .bbi-shipping-details {
+	display: block;
+}
+
+/* ── Full-width shipping row ───────────────────────────────── */
+/*  Applied by checkout.js: moves the "Shipping" heading into    */
+/*  the <td> and sets colspan="2" so options have full width.    */
+.bbi-shipping-th-hidden {
+	display: none !important;
+}
+
+td.bbi-shipping-expanded {
+	padding-left: 0;
+}
+
+.bbi-shipping-row-label {
+	display: block;
+	font-weight: 700;
+	margin-bottom: 6px;
+	color: inherit;
 }
