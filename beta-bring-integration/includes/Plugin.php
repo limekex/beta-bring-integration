@@ -53,6 +53,12 @@ class Plugin {
 			return $methods;
 		} );
 
+		// Enrich the shipping rate label with logo, delivery estimate, description
+		// and pickup point info.  Registered here — not inside ShippingMethod::init()
+		// — so it fires even when WooCommerce serves cached rates from the session
+		// (in which case ShippingMethod is never instantiated on the current request).
+		add_filter( 'woocommerce_cart_shipping_method_full_label', [ ShippingMethod::class, 'filter_rate_label' ], 10, 2 );
+
 		// REST routes.
 		add_action( 'rest_api_init', [ Routes::class, 'register_routes' ] );
 

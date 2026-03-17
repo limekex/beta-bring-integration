@@ -46,13 +46,6 @@ class ShippingMethod extends \WC_Shipping_Method {
 			'woocommerce_update_options_shipping_' . $this->id,
 			[ $this, 'process_admin_options' ]
 		);
-
-		add_filter(
-			'woocommerce_cart_shipping_method_full_label',
-			[ $this, 'filter_rate_label' ],
-			10,
-			2
-		);
 	}
 
 	public function init_form_fields(): void {
@@ -276,13 +269,16 @@ class ShippingMethod extends \WC_Shipping_Method {
 	 * logo, estimated delivery date, description text, and closest pickup
 	 * point (for pickup-point services).
 	 *
+	 * Registered unconditionally via Plugin::init() so it fires even when
+	 * the shipping method is not re-instantiated (i.e. cached-rate requests).
+	 *
 	 * Hooked to `woocommerce_cart_shipping_method_full_label`.
 	 *
 	 * @param string            $label The current label HTML.
 	 * @param \WC_Shipping_Rate $rate  The shipping rate object.
 	 * @return string
 	 */
-	public function filter_rate_label( string $label, \WC_Shipping_Rate $rate ): string {
+	public static function filter_rate_label( string $label, \WC_Shipping_Rate $rate ): string {
 		if ( 'bbi_bring' !== $rate->get_method_id() ) {
 			return $label;
 		}
