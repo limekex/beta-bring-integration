@@ -123,11 +123,11 @@ class ShippingMethod extends \WC_Shipping_Method {
 
 		$weight_grams = (int) round( $weight_kg * 1000 );
 
-		// When no cart item has a weight configured, skip the live rate query entirely
-		// and fall through to the fallback cost below (the API requires weight or dimensions).
-		$api_products = $weight_grams > 0
-			? $this->get_api_products( $from_postal, $from_country, $to_postal, $to_country, $weight_grams, $service_ids )
-			: [];
+		// Always query the Bring Shipping Guide API so that guiInformation (logo,
+		// description, delivery estimate) is available even for stores that don't
+		// configure product weights.  get_api_products() omits the weight
+		// parameter from the request when weight_grams is zero.
+		$api_products = $this->get_api_products( $from_postal, $from_country, $to_postal, $to_country, $weight_grams, $service_ids );
 
 		$fallback = $this->get_option( 'fallback_cost' );
 

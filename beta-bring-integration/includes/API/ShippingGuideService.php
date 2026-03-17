@@ -39,10 +39,11 @@ class ShippingGuideService {
 	public function get_products( string $from_postal, string $to_postal, array $product_ids = [], array $opts = [] ): array {
 		$params = array_merge(
 			[
-				'frompostalcode' => $from_postal,
-				'topostalcode'   => $to_postal,
-				'fromcountry'    => $this->settings->get_sender_array()['country'] ?? 'NO',
-				'tocountry'      => 'NO',
+				'frompostalcode'      => $from_postal,
+				'topostalcode'        => $to_postal,
+				'fromcountry'         => $this->settings->get_sender_array()['country'] ?? 'NO',
+				'tocountry'           => 'NO',
+				'consignorCustomerNo' => $this->settings->get_customer_no() ?? '',
 			],
 			$opts
 		);
