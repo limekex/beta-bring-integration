@@ -106,16 +106,23 @@ class Routes {
 			);
 		}
 
-		$opts = [];
-		foreach ( [ 'fromcountrycode', 'tocountrycode', 'weightInGrams', 'volumeInDm3', 'language' ] as $key ) {
-			$val = $request->get_param( $key );
+		// Map REST param names to the keys expected by ShippingGuideService::get_products().
+		$opts        = [];
+		$param_map   = [
+			'fromcountrycode' => 'fromcountry',
+			'tocountrycode'   => 'tocountry',
+			'weightInGrams'   => 'weight_grams',
+			'language'        => 'language',
+		];
+		foreach ( $param_map as $param => $key ) {
+			$val = $request->get_param( $param );
 			if ( null !== $val ) {
 				$opts[ $key ] = sanitize_text_field( (string) $val );
 			}
 		}
 
 		$service = new ShippingGuideService( new SettingsModel() );
-		$data    = $service->get_products( $from_postal, $to_postal, $opts );
+		$data    = $service->get_products( $from_postal, $to_postal, [], $opts );
 
 		return rest_ensure_response( $data );
 	}

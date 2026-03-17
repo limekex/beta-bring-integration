@@ -125,8 +125,8 @@ class ShippingMethod extends \WC_Shipping_Method {
 
 		// Always query the Bring Shipping Guide API so that guiInformation (logo,
 		// description, delivery estimate) is available even for stores that don't
-		// configure product weights.  get_api_products() omits the weight
-		// parameter from the request when weight_grams is zero.
+		// configure product weights.  ShippingGuideService enforces a minimum of
+		// 1 gram for the package grossWeight so the API always receives a valid body.
 		$api_products = $this->get_api_products( $from_postal, $from_country, $to_postal, $to_country, $weight_grams, $service_ids );
 
 		$fallback = $this->get_option( 'fallback_cost' );
@@ -212,27 +212,27 @@ class ShippingMethod extends \WC_Shipping_Method {
 		int $weight_grams,
 		array $service_ids = []
 	): array {
-		$cache_key = 'bbi_sg_' . md5( implode( '|', [ $from_postal, $from_country, $to_postal, $to_country, $weight_grams, implode( ',', $service_ids ) ] ) );
+		// Include BBI_VER in the cache key so that stale transients are
+		// automatically discarded when the plugin is updated.
+		$cache_key = 'bbi_sg_' . md5( implode( '|', [ BBI_VER, $from_postal, $from_country, $to_postal, $to_country, $weight_grams, implode( ',', $service_ids ) ] ) );
 
 		$cached = get_transient( $cache_key );
 		if ( is_array( $cached ) ) {
 			return $cached;
 		}
 
-		$query_args = array_filter(
-			[
-				'fromcountry' => $from_country,
-				'tocountry'   => $to_country,
-				'weight'      => $weight_grams > 0 ? (string) $weight_grams : '',
-			],
-			fn( string $v ): bool => '' !== $v
-		);
+		$opts = [
+			'fromcountry'  => $from_country,
+			'tocountry'    => $to_country,
+			'weight_grams' => $weight_grams,
+		];
 
-		$api_data = $this->guide->get_products( $from_postal, $to_postal, $service_ids, $query_args );
+		$api_data = $this->guide->get_products( $from_postal, $to_postal, $service_ids, $opts );
 
-		$indexed = [];
-		if ( ! empty( $api_data['products'] ) && is_array( $api_data['products'] ) ) {
-			foreach ( $api_data['products'] as $product ) {
+		$indexed  = [];
+		$products = $api_data['consignments'][0]['products'] ?? [];
+		if ( is_array( $products ) ) {
+			foreach ( $products as $product ) {
 				$pid = $product['id'] ?? '';
 				if ( $pid ) {
 					$indexed[ $pid ] = $product;
