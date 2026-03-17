@@ -169,25 +169,25 @@ class Settings {
     public static function default_presets_json(): string {
         return json_encode( [
             'pakke_i_postkassen' => [
-                'label' => 'Pakke i postkassen',
-                'serviceId' => 'PAKKE_I_POSTKASSEN',
-                'vas' => [],
+                'label'           => 'Pakke i postkassen',
+                'serviceId'       => '3584',
+                'vas'             => [],
                 'packageTemplate' => [ 'length' => 30, 'width' => 20, 'height' => 10 ],
-                'maxWeightKg' => 2.0,
+                'maxWeightKg'     => 5.0, // Bring's published limit for this product.
             ],
             'hent_i_butikk' => [
-                'label' => 'Hent i butikk',
-                'serviceId' => 'SERVICEPAKKE',
-                'vas' => [ 'NOTIFY_RECIPIENT_SMS' ],
+                'label'           => 'Hent i butikk',
+                'serviceId'       => '5800',
+                'vas'             => [ 'NOTIFY_RECIPIENT_SMS' ],
                 'packageTemplate' => [ 'length' => 60, 'width' => 35, 'height' => 35 ],
-                'maxWeightKg' => 35.0,
+                'maxWeightKg'     => 35.0,
             ],
             'hjemlevering' => [
-                'label' => 'Hjemlevering',
-                'serviceId' => 'PA_DOREN',
-                'vas' => [],
+                'label'           => 'Hjemlevering',
+                'serviceId'       => '5600',
+                'vas'             => [],
                 'packageTemplate' => [ 'length' => 120, 'width' => 40, 'height' => 40 ],
-                'maxWeightKg' => 35.0,
+                'maxWeightKg'     => 35.0,
             ],
         ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
     }

@@ -20,6 +20,33 @@ class ShippingMethod extends \WC_Shipping_Method {
 	/** Cache TTL for Bring API responses (seconds). */
 	private const CACHE_TTL = 900; // 15 minutes
 
+	/**
+	 * Maps current Bring Shipping Guide v2 numeric product codes to the legacy
+	 * string codes that older preset configurations may still use.
+	 *
+	 * The API always responds with numeric IDs regardless of what string alias
+	 * was sent in the request, so we need to also expose products under their
+	 * legacy aliases so that existing preset configs keep working.
+	 *
+	 * @var array<string, string[]>  numeric_id → list of legacy string aliases
+	 */
+	private const LEGACY_CODE_MAP = [
+		// 3570 = non-trackable mailbox parcel; 3584 = trackable variant.
+		// Both share the PAKKE_I_POSTKASSEN legacy alias. The trackable (3584)
+		// entry intentionally overwrites the 3570 entry so that when a preset
+		// uses the legacy alias it resolves to the tracked product.
+		'3570' => [ 'PAKKE_I_POSTKASSEN' ],
+		'3584' => [ 'PAKKE_I_POSTKASSEN' ],
+		'5800' => [ 'SERVICEPAKKE', 'PAKKE_TIL_HENTESTED' ],
+		'5600' => [ 'PA_DOREN', 'PAKKE_LEVERT_HJEM' ],
+		'1000' => [ 'BPAKKE_DOR-DOR', 'BEDRIFTSPAKKE' ],
+		'1002' => [ 'EKSPRESS09' ],
+		'0330' => [ 'BUSINESS_PARCEL' ],
+		'0340' => [ 'PICKUP_PARCEL' ],
+		'3110' => [ 'MINIPAKKE' ],
+		'4850' => [ 'EKSPRESS_NESTE_DAG' ],
+	];
+
 	private SettingsModel        $bbi_settings;
 	private ShippingGuideService $guide;
 
@@ -234,8 +261,17 @@ class ShippingMethod extends \WC_Shipping_Method {
 		if ( is_array( $products ) ) {
 			foreach ( $products as $product ) {
 				$pid = $product['id'] ?? '';
-				if ( $pid ) {
-					$indexed[ $pid ] = $product;
+				if ( ! $pid ) {
+					continue;
+				}
+				// Index by the numeric product ID returned by the API.
+				$indexed[ $pid ] = $product;
+
+				// Also index by any known legacy string aliases for this product
+				// so that existing preset configs using old Bring string codes
+				// (e.g. "SERVICEPAKKE") continue to resolve correctly.
+				foreach ( self::LEGACY_CODE_MAP[ $pid ] ?? [] as $alias ) {
+					$indexed[ $alias ] = $product;
 				}
 			}
 		}
