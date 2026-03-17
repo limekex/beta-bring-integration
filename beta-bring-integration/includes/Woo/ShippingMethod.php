@@ -46,6 +46,13 @@ class ShippingMethod extends \WC_Shipping_Method {
 			'woocommerce_update_options_shipping_' . $this->id,
 			[ $this, 'process_admin_options' ]
 		);
+
+		add_filter(
+			'woocommerce_cart_shipping_method_full_label',
+			[ $this, 'filter_rate_label' ],
+			10,
+			2
+		);
 	}
 
 	public function init_form_fields(): void {
@@ -145,10 +152,15 @@ class ShippingMethod extends \WC_Shipping_Method {
 				continue;
 			}
 
-			$cost = null;
+			$cost         = null;
+			$gui_info     = [];
+			$exp_delivery = [];
 
 			if ( isset( $api_products[ $service_id ] ) ) {
-				$price_data = $api_products[ $service_id ]['price'] ?? [];
+				$api_product  = $api_products[ $service_id ];
+				$price_data   = $api_product['price'] ?? [];
+				$gui_info     = $api_product['guiInformation'] ?? [];
+				$exp_delivery = $api_product['expectedDelivery'] ?? [];
 
 				// Prefer net price, fall back to list price.
 				$cost = $this->extract_price( $price_data['netPrice'] ?? [] )
@@ -163,14 +175,25 @@ class ShippingMethod extends \WC_Shipping_Method {
 				$cost = (float) $fallback;
 			}
 
+			// Use the API display name if the preset has no custom label configured.
+			$label = $preset['label'] ?? '';
+			if ( '' === $label && ! empty( $gui_info['displayName'] ) ) {
+				$label = $gui_info['displayName'];
+			}
+			if ( '' === $label ) {
+				$label = $preset_key;
+			}
+
 			$this->add_rate( [
 				'id'        => $this->get_rate_id( sanitize_key( $preset_key ) ),
-				'label'     => $preset['label'] ?? $preset_key,
+				'label'     => $label,
 				'cost'      => $cost,
 				'calc_tax'  => 'per_order',
 				'meta_data' => [
-					'bbi_preset_key' => $preset_key,
-					'bbi_service_id' => $service_id,
+					'bbi_preset_key'       => $preset_key,
+					'bbi_service_id'       => $service_id,
+					'bbi_gui_info'         => $gui_info,
+					'bbi_expected_delivery' => $exp_delivery,
 				],
 			] );
 		}
@@ -230,16 +253,103 @@ class ShippingMethod extends \WC_Shipping_Method {
 	}
 
 	/**
-	 * Extract a price amount (including VAT) from a Bring price object.
+	 * Extract a price amount (tax-exclusive) from a Bring price object.
 	 *
-	 * @param array $price_obj e.g. { priceWithoutAdditionalServices: { amountWithVAT: "99.00" } }
+	 * WooCommerce shipping rates expect a tax-exclusive cost; the store's
+	 * configured shipping tax class is then applied on top.  Using
+	 * amountWithoutVAT ensures the displayed cart price matches the
+	 * API's amountWithVAT once WooCommerce adds the correct VAT.
+	 *
+	 * @param array $price_obj e.g. { priceWithoutAdditionalServices: { amountWithoutVAT: "46.65" } }
 	 * @return float|null
 	 */
 	private function extract_price( array $price_obj ): ?float {
-		$amount = $price_obj['priceWithoutAdditionalServices']['amountWithVAT']
-			?? $price_obj['totalPrice']['amountWithVAT']
+		$amount = $price_obj['priceWithoutAdditionalServices']['amountWithoutVAT']
+			?? $price_obj['totalPrice']['amountWithoutVAT']
 			?? null;
 
 		return null !== $amount ? (float) $amount : null;
+	}
+
+	/**
+	 * Enrich the shipping rate label in the cart/checkout with the Bring
+	 * logo, estimated delivery date, description text, and closest pickup
+	 * point (for pickup-point services).
+	 *
+	 * Hooked to `woocommerce_cart_shipping_method_full_label`.
+	 *
+	 * @param string            $label The current label HTML.
+	 * @param \WC_Shipping_Rate $rate  The shipping rate object.
+	 * @return string
+	 */
+	public function filter_rate_label( string $label, \WC_Shipping_Rate $rate ): string {
+		if ( 'bbi_bring' !== $rate->get_method_id() ) {
+			return $label;
+		}
+
+		$meta     = $rate->get_meta_data();
+		$gui      = $meta['bbi_gui_info'] ?? [];
+		$delivery = $meta['bbi_expected_delivery'] ?? [];
+
+		if ( empty( $gui ) && empty( $delivery ) ) {
+			return $label;
+		}
+
+		$extra = '';
+
+		// Logo.
+		$logo_url = $gui['logoUrl'] ?? '';
+		if ( $logo_url ) {
+			$alt_text = $gui['logo'] ?? $gui['displayName'] ?? __( 'Shipping provider logo', 'bbi' );
+			$extra .= '<img src="' . esc_url( $logo_url ) . '" alt="' . esc_attr( $alt_text ) . '" class="bbi-shipping-logo" />';
+		}
+
+		// Estimated delivery.
+		$delivery_date = $delivery['formattedExpectedDeliveryDate'] ?? '';
+		$working_days  = isset( $delivery['workingDays'] ) ? (int) $delivery['workingDays'] : 0;
+		if ( $delivery_date ) {
+			$extra .= '<span class="bbi-delivery-estimate">';
+			if ( $working_days > 0 ) {
+				$extra .= esc_html(
+					sprintf(
+						/* translators: 1: expected delivery date, 2: number of working days */
+						_n(
+							'Expected delivery %1$s (%2$d working day)',
+							'Expected delivery %1$s (%2$d working days)',
+							$working_days,
+							'bbi'
+						),
+						$delivery_date,
+						$working_days
+					)
+				);
+			} else {
+				$extra .= esc_html(
+					sprintf(
+						/* translators: %s: expected delivery date */
+						__( 'Expected delivery %s', 'bbi' ),
+						$delivery_date
+					)
+				);
+			}
+			$extra .= '</span>';
+		}
+
+		// Description / help text.
+		$desc = $gui['descriptionText'] ?? '';
+		if ( $desc ) {
+			$extra .= '<span class="bbi-shipping-desc">' . esc_html( $desc ) . '</span>';
+		}
+
+		// Closest pickup point (returned by SERVICEPAKKE / hentested products).
+		$pickup = $gui['closestPickupPoint'] ?? '';
+		if ( $pickup ) {
+			$extra .= '<span class="bbi-pickup-hint">'
+				. esc_html__( 'Closest pickup point: ', 'bbi' )
+				. esc_html( $pickup )
+				. '</span>';
+		}
+
+		return $extra ? $label . $extra : $label;
 	}
 }

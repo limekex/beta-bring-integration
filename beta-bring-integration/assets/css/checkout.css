@@ -1,0 +1,25 @@
+/* Bring shipping rate label enhancements – cart & checkout */
+
+.bbi-shipping-logo {
+	display: block;
+	max-height: 24px;
+	width: auto;
+	margin-bottom: 4px;
+}
+
+.bbi-delivery-estimate,
+.bbi-shipping-desc,
+.bbi-pickup-hint {
+	display: block;
+	font-size: 0.85em;
+	color: #555;
+	margin-top: 2px;
+}
+
+.bbi-delivery-estimate {
+	font-style: italic;
+}
+
+.bbi-pickup-hint {
+	font-weight: 600;
+}

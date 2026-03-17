@@ -56,8 +56,18 @@ class Plugin {
 		// REST routes.
 		add_action( 'rest_api_init', [ Routes::class, 'register_routes' ] );
 
+		// Frontend CSS for enriched shipping rate labels in cart/checkout.
+		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_assets' ] );
+
 		// Notices helper.
 		Notices::init();
+	}
+
+	public function enqueue_frontend_assets(): void {
+		// Only load on cart and checkout pages.
+		if ( function_exists( 'is_cart' ) && ( is_cart() || is_checkout() ) ) {
+			wp_enqueue_style( 'bbi-checkout', BBI_URL . 'assets/css/checkout.css', [], BBI_VER );
+		}
 	}
 
 	public function enqueue_admin_assets( string $hook ): void {
