@@ -53,6 +53,15 @@ class Plugin {
 			return $methods;
 		} );
 
+		// Include the plugin version in the WooCommerce shipping session transient key.
+		// WooCommerce caches computed shipping rates per-package in the session; without
+		// this, a plugin update does not bust the old session cache, so rates calculated
+		// before the fix (e.g. fallback prices) continue to be served until the customer
+		// changes their cart or destination.
+		add_filter( 'woocommerce_shipping_package_transient_key', static function ( string $key ): string {
+			return $key . '_bbi' . sanitize_key( BBI_VER );
+		} );
+
 		// Enrich the shipping rate label with logo, delivery estimate, description
 		// and pickup point info.  Registered here — not inside ShippingMethod::init()
 		// — so it fires even when WooCommerce serves cached rates from the session

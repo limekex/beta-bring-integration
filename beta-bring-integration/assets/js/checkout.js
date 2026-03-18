@@ -3,13 +3,12 @@
  *
  * 1. Makes the shipping table row span the full table width so the
  *    options have more room to breathe.
- * 2. Shows the enriched details panel (logo, delivery estimate, description,
- *    closest pickup point) only for the currently selected shipping option,
- *    and updates the visible panel when the selection changes.
- *
- * The CSS `:checked + label .bbi-shipping-details` rule already handles the
- * initial state and post-AJAX refresh; the JS change handler gives instant
- * feedback before the browser re-renders the pseudo-class.
+ * 2. Styles each shipping option as a selectable card and highlights
+ *    the selected one. The CSS `:has()` rule handles this in modern
+ *    browsers; the `.bbi-selected` class added here is the fallback
+ *    for browsers that don't support `:has()`.
+ * 3. Shows the enriched details panel (logo, delivery estimate,
+ *    description, closest pickup point) only for the selected option.
  */
 ( function ( $ ) {
 	'use strict';
@@ -47,25 +46,38 @@
 	}
 
 	/**
-	 * Show/hide details panels in response to a radio-button change.
-	 * The CSS :checked rule handles the visual state; this handler
-	 * just forces an instant repaint before CSS can catch up.
+	 * Sync the .bbi-selected class on <li> items to reflect which
+	 * shipping radio is checked.  This drives the card highlight and
+	 * detail-panel visibility for browsers that lack :has() support.
 	 */
+	function syncSelectedCard() {
+		var $lists = $( 'ul.woocommerce-shipping-rates' );
+		if ( ! $lists.length ) {
+			return;
+		}
+
+		$lists.each( function () {
+			var $ul = $( this );
+			$ul.children( 'li' ).removeClass( 'bbi-selected' );
+			$ul.find( 'input[name^="shipping_method"]:checked' ).closest( 'li' ).addClass( 'bbi-selected' );
+		} );
+	}
+
 	function bindShippingChange() {
 		$( document ).on( 'change', 'input[name^="shipping_method"]', function () {
-			var $ul = $( this ).closest( 'ul' );
-			$ul.find( '.bbi-shipping-details' ).hide();
-			$ul.find( 'input[name^="shipping_method"]:checked + label .bbi-shipping-details' ).show();
+			syncSelectedCard();
 		} );
 	}
 
 	$( function () {
 		expandShippingRow();
+		syncSelectedCard();
 		bindShippingChange();
 	} );
 
 	// Re-apply after WooCommerce fragment / AJAX updates.
 	$( document.body ).on( 'updated_cart_totals updated_checkout wc_fragments_refreshed', function () {
 		expandShippingRow();
+		syncSelectedCard();
 	} );
 } )( jQuery );

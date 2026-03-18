@@ -1,15 +1,75 @@
 /* Bring shipping rate label enhancements – cart & checkout */
 
+/* ══════════════════════════════════════════════════════════════
+   Option cards – applied to each <li> in woocommerce-shipping-rates
+   ══════════════════════════════════════════════════════════════ */
+ul.woocommerce-shipping-rates {
+	list-style: none;
+	padding: 4px 0 0;
+	margin: 0;
+}
+
+ul.woocommerce-shipping-rates li {
+	border: 1px solid #e0e0e0;
+	border-radius: 6px;
+	margin-bottom: 8px;
+	padding: 10px 14px 10px 12px;
+	cursor: pointer;
+	transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Hover – subtle lift */
+ul.woocommerce-shipping-rates li:hover {
+	border-color: #b0c8e0;
+	box-shadow: 0 1px 4px rgba( 0, 0, 0, 0.06 );
+}
+
+/* Selected state — CSS `:has()` for modern browsers, JS adds .bbi-selected as fallback */
+ul.woocommerce-shipping-rates li:has( input[name^="shipping_method"]:checked ),
+ul.woocommerce-shipping-rates li.bbi-selected {
+	border-color: #007cba;
+	background: #f0f8ff;
+	box-shadow: 0 0 0 2px rgba( 0, 124, 186, 0.12 );
+}
+
+ul.woocommerce-shipping-rates li label {
+	display: block;
+	cursor: pointer;
+	margin: 0;
+	font-weight: 500;
+	line-height: 1.4;
+}
+
+/* Hide the native radio button visually while keeping it accessible
+   to screen readers and keyboard navigation. */
+ul.woocommerce-shipping-rates input[name^="shipping_method"] {
+	clip: rect( 0, 0, 0, 0 );
+	clip-path: inset( 50% );
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+/* Keyboard-focus ring on the card when the hidden radio receives focus */
+ul.woocommerce-shipping-rates li:has( input[name^="shipping_method"]:focus-visible ),
+ul.woocommerce-shipping-rates li.bbi-selected:focus-within {
+	outline: 2px solid #007cba;
+	outline-offset: 2px;
+}
+
 /* ── Logo ──────────────────────────────────────────────────── */
 .bbi-shipping-logo {
 	display: inline-block;
-	max-height: 26px;
+	max-height: 24px;
 	width: auto;
 	vertical-align: middle;
 	margin-right: 6px;
+	margin-top: -2px;
 }
 
-/* ── Delivery estimate (inline beside logo) ─────────────────── */
+/* ── Delivery estimate ─────────────────────────────────────── */
 .bbi-delivery-estimate {
 	display: inline-block;
 	font-size: 0.82em;
@@ -18,13 +78,13 @@
 	vertical-align: middle;
 }
 
-/* ── Description & pickup point (block below) ──────────────── */
+/* ── Description & pickup ──────────────────────────────────── */
 .bbi-shipping-desc {
 	display: block;
 	font-size: 0.82em;
-	color: #777;
-	margin-top: 4px;
-	line-height: 1.4;
+	color: #666;
+	margin-top: 6px;
+	line-height: 1.45;
 }
 
 .bbi-pickup-hint {
@@ -32,17 +92,16 @@
 	font-size: 0.82em;
 	font-weight: 600;
 	color: #444;
-	margin-top: 4px;
+	margin-top: 6px;
 }
 
 /* ── Details panel ─────────────────────────────────────────── */
-/*  Hidden by default; revealed via CSS for the selected option  */
-/*  and via JS after a change event for instant feedback.         */
+/* Hidden by default; revealed for the selected option only. */
 .bbi-shipping-details {
 	display: none;
-	margin-top: 8px;
-	padding: 8px 0 2px;
-	border-top: 1px solid #eee;
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px solid #d0e4f0;
 	animation: bbi-fade-in 0.18s ease;
 }
 
@@ -53,20 +112,19 @@
 
 @media ( prefers-reduced-motion: no-preference ) {
 	@keyframes bbi-fade-in {
-		from { opacity: 0; transform: translateY( -4px ); }
+		from { opacity: 0; transform: translateY( -3px ); }
 		to   { opacity: 1; transform: translateY( 0 ); }
 	}
 }
 
-/* Reveal details for whichever radio is currently checked.
-   Works because WooCommerce renders: <input> immediately followed by <label>. */
-input[name^="shipping_method"]:checked + label .bbi-shipping-details {
+/* Reveal via CSS for browsers that support :has() */
+ul.woocommerce-shipping-rates li:has( input[name^="shipping_method"]:checked ) .bbi-shipping-details,
+ul.woocommerce-shipping-rates li.bbi-selected .bbi-shipping-details {
 	display: block;
 }
 
 /* ── Full-width shipping row ───────────────────────────────── */
-/*  Applied by checkout.js: moves the "Shipping" heading into    */
-/*  the <td> and sets colspan="2" so options have full width.    */
+/* Applied by checkout.js */
 .bbi-shipping-th-hidden {
 	display: none !important;
 }
@@ -78,6 +136,7 @@ td.bbi-shipping-expanded {
 .bbi-shipping-row-label {
 	display: block;
 	font-weight: 700;
-	margin-bottom: 6px;
+	margin-bottom: 10px;
+	font-size: 1em;
 	color: inherit;
 }
