@@ -144,9 +144,19 @@ class Plugin {
 		// Classic checkout: enriched labels via the woocommerce_cart_shipping_method_full_label filter.
 		wp_enqueue_style( 'bbi-checkout', BBI_URL . 'assets/css/checkout.css', [], BBI_VER );
 		wp_enqueue_script( 'bbi-checkout', BBI_URL . 'assets/js/checkout.js', [ 'jquery' ], BBI_VER, true );
+		// Pass the customer's session postcode so the cart page (which has no address fields) can still fetch pickup points.
+		$customer_postcode = '';
+		$customer_country  = 'NO';
+		if ( function_exists( 'WC' ) && WC()->customer ) {
+			$customer_postcode = WC()->customer->get_shipping_postcode() ?: WC()->customer->get_billing_postcode();
+			$customer_country  = WC()->customer->get_shipping_country() ?: WC()->customer->get_billing_country() ?: 'NO';
+		}
+
 		wp_localize_script( 'bbi-checkout', 'bbi_checkout_pickup', [
-			'rest_url' => rest_url( 'bbi/v1' ),
-			'nonce'    => wp_create_nonce( 'wp_rest' ),
+			'rest_url'          => rest_url( 'bbi/v1' ),
+			'nonce'             => wp_create_nonce( 'wp_rest' ),
+			'customer_postcode' => $customer_postcode,
+			'customer_country'  => strtoupper( $customer_country ),
 		] );
 		wp_localize_script( 'bbi-checkout', 'bbi_checkout_i18n', [
 			'loading'       => __( 'Loading…', 'bbi' ),

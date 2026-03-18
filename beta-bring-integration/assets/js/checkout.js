@@ -149,12 +149,28 @@
 			country  = country || $( alt + 'country' ).val() || '';
 		}
 
+		// Fallback: cart page shipping calculator fields.
+		if ( ! postcode ) {
+			postcode = $( '#calc_shipping_postcode' ).val() || '';
+			country  = country || $( '#calc_shipping_country' ).val() || '';
+		}
+
 		// Fallback: try common WC field selectors.
 		if ( ! postcode ) {
-			postcode = $( '[name="billing_postcode"], [name="shipping_postcode"], [name="postcode"]' ).filter( function () { return !!$( this ).val(); } ).first().val() || '';
+			postcode = $( '[name="billing_postcode"], [name="shipping_postcode"], [name="postcode"], [name="calc_shipping_postcode"]' ).filter( function () { return !!$( this ).val(); } ).first().val() || '';
 		}
 		if ( ! country ) {
-			country = $( '[name="billing_country"], [name="shipping_country"]' ).filter( function () { return !!$( this ).val(); } ).first().val() || 'NO';
+			country = $( '[name="billing_country"], [name="shipping_country"], [name="calc_shipping_country"]' ).filter( function () { return !!$( this ).val(); } ).first().val() || '';
+		}
+
+		// Last resort: use the customer session data passed from PHP.
+		if ( ! postcode && window.bbi_checkout_pickup ) {
+			postcode = bbi_checkout_pickup.customer_postcode || '';
+			country  = country || bbi_checkout_pickup.customer_country || 'NO';
+		}
+
+		if ( ! country ) {
+			country = 'NO';
 		}
 
 		var result = { postcode: postcode.replace( /\s+/g, '' ), country: country.toUpperCase() };
@@ -261,7 +277,7 @@
 		bindPickupChange();
 
 		// Re-fetch pickup points when postcode or country changes.
-		$( document ).on( 'change', '#billing_postcode, #shipping_postcode, #billing_country, #shipping_country, [name="billing_postcode"], [name="shipping_postcode"]', function () {
+		$( document ).on( 'change', '#billing_postcode, #shipping_postcode, #billing_country, #shipping_country, #calc_shipping_postcode, #calc_shipping_country, [name="billing_postcode"], [name="shipping_postcode"]', function () {
 			lastPickupRequest = ''; // Reset so the next sync triggers a fresh fetch.
 			loadPickupPoints();
 		} );
