@@ -29,4 +29,19 @@ class Logger {
     public static function error( string $message, array $context = [] ): void {
         self::get()->error( $message, array_merge( [ 'source' => self::SOURCE ], $context ) );
     }
+
+    /**
+     * Write a debug-level log entry.
+     *
+     * Only writes when the "Debug mode" setting is enabled under
+     * WooCommerce → Settings → Shipping → BeTA Bring.
+     * Logs are visible in WooCommerce → Status → Logs (source: bbi).
+     */
+    public static function debug( string $message, array $context = [] ): void {
+        if ( 'yes' !== get_option( 'bbi_debug_mode', 'no' ) ) {
+            return;
+        }
+
+        self::get()->debug( $message, array_merge( [ 'source' => self::SOURCE ], $context ) );
+    }
 }

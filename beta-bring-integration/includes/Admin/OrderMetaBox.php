@@ -63,11 +63,23 @@ class OrderMetaBox {
 		echo '</select>';
 
 		// Pickup point selector – visible only for presets that require it.
-		echo '<div id="bbi_pickup_wrap" style="display:none;">';
+		$customer_pickup_id   = $order ? $order->get_meta( OrderData::META_PICKUP_POINT ) : '';
+		$customer_pickup_name = $order ? $order->get_meta( OrderData::META_PICKUP_NAME )  : '';
+
+		echo '<div id="bbi_pickup_wrap" style="display:none;"'
+			. ' data-customer-pickup-id="' . esc_attr( $customer_pickup_id ) . '"'
+			. ' data-customer-pickup-name="' . esc_attr( $customer_pickup_name ) . '">';
 		echo '<p><label for="bbi_pickup_point">' . esc_html__( 'Pickup point', 'bbi' ) . '</label></p>';
 		echo '<select id="bbi_pickup_point" name="pickup_point_id">'
-			. '<option value="">' . esc_html__( 'Select pickup point', 'bbi' ) . '</option>'
-			. '</select>';
+			. '<option value="">' . esc_html__( 'Select pickup point', 'bbi' ) . '</option>';
+		if ( $customer_pickup_id ) {
+			printf(
+				'<option value="%s" selected>%s</option>',
+				esc_attr( $customer_pickup_id ),
+				esc_html( $customer_pickup_name ?: $customer_pickup_id )
+			);
+		}
+		echo '</select>';
 		echo '</div>';
 
 		echo '<p>' . sprintf(
@@ -178,6 +190,16 @@ class OrderMetaBox {
 			);
 
 			$order->save();
+
+			/**
+			 * Fires after a Bring shipment is successfully booked.
+			 *
+			 * Hooked by BookingEmail to send the customer notification.
+			 *
+			 * @param \WC_Order $order       The WooCommerce order.
+			 * @param array    $arr         Booking result data (consignment_no, tracking_url, …).
+			 */
+			do_action( 'bbi_shipment_booked', $order, $arr );
 
 			wp_send_json_success( [ 'message' => __( 'Booked successfully', 'bbi' ), 'data' => $arr ] );
 		} catch ( WP_Error $e ) {

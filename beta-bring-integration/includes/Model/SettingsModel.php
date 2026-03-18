@@ -18,6 +18,10 @@ class SettingsModel {
         return 'yes' === get_option( 'bbi_test_mode', 'no' );
     }
 
+    public function is_debug_mode(): bool {
+        return 'yes' === get_option( 'bbi_debug_mode', 'no' );
+    }
+
     public function get_default_preset_key(): ?string {
         return get_option( 'bbi_default_preset_key', '' ) ?: null;
     }
@@ -43,15 +47,23 @@ class SettingsModel {
 
     public function get_sender_array(): array {
         return [
-            'name' => get_option( 'bbi_sender_name', '' ),
-            'orgno' => get_option( 'bbi_sender_org', '' ),
-            'phone' => get_option( 'bbi_sender_phone', '' ),
-            'email' => get_option( 'bbi_sender_email', '' ),
-            'address1' => get_option( 'bbi_sender_address1', '' ),
-            'address2' => get_option( 'bbi_sender_address2', '' ),
-            'postcode' => get_option( 'bbi_sender_postcode', '' ),
-            'city' => get_option( 'bbi_sender_city', '' ),
-            'country' => get_option( 'bbi_sender_country', 'NO' ),
+            'name'      => get_option( 'bbi_sender_name', '' ),
+            'orgno'     => get_option( 'bbi_sender_org', '' ),
+            'phone'     => get_option( 'bbi_sender_phone', '' ),
+            'email'     => get_option( 'bbi_sender_email', '' ),
+            'address1'  => get_option( 'bbi_sender_address1', '' ),
+            'address2'  => get_option( 'bbi_sender_address2', '' ),
+            'postcode'  => get_option( 'bbi_sender_postcode', '' ),
+            'city'      => get_option( 'bbi_sender_city', '' ),
+            'country'   => get_option( 'bbi_sender_country', 'NO' ),
         ];
+    }
+
+    public function get_sender_logo_url(): string {
+        return get_option( 'bbi_sender_logo_url', '' );
+    }
+
+    public function get_sender_reference(): string {
+        return get_option( 'bbi_sender_reference', '' );
     }
 }

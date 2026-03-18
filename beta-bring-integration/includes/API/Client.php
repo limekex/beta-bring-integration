@@ -12,18 +12,17 @@ class Client {
     }
 
     public function post_json( string $url, array $body, int $timeout = 15 ): array {
-        $logger = Logger::get();
         $args = [
             'headers' => $this->prepare_headers(),
             'body'    => wp_json_encode( $body ),
             'timeout' => $timeout,
         ];
 
-        $logger->info( 'bbi: POST ' . $url, [ 'payload' => $body ] );
+        Logger::debug( 'POST ' . $url, [ 'payload' => $body ] );
 
         $response = wp_remote_post( $url, $args );
         if ( is_wp_error( $response ) ) {
-            $logger->error( 'bbi: HTTP error', [ 'err' => $response->get_error_message() ] );
+            Logger::error( 'HTTP error on POST ' . $url, [ 'err' => $response->get_error_message() ] );
             return [ 'success' => false, 'error' => $response->get_error_message() ];
         }
 
@@ -33,9 +32,10 @@ class Client {
         if ( 429 === (int) $code ) {
             // simple backoff one retry
             usleep( 400000 );
-            $logger->info( 'bbi: retry after 429' );
+            Logger::debug( 'Retry after 429 on POST ' . $url );
             $response = wp_remote_post( $url, $args );
             if ( is_wp_error( $response ) ) {
+                Logger::error( 'HTTP error on POST retry ' . $url, [ 'err' => $response->get_error_message() ] );
                 return [ 'success' => false, 'error' => $response->get_error_message() ];
             }
             $code = wp_remote_retrieve_response_code( $response );
@@ -44,17 +44,19 @@ class Client {
 
         $decoded = json_decode( $body, true );
 
+        Logger::debug( 'POST response ' . $url, [ 'code' => $code, 'body' => $decoded ?? $body ] );
+
         return [ 'success' => in_array( $code, [ 200, 201 ], true ), 'code' => $code, 'body' => $decoded ?? $body ];
     }
 
     public function get( string $url, int $timeout = 15 ): array {
-        $logger = Logger::get();
         $args = [ 'headers' => $this->prepare_headers(), 'timeout' => $timeout ];
 
-        $logger->info( 'bbi: GET ' . $url );
+        Logger::debug( 'GET ' . $url );
 
         $response = wp_remote_get( $url, $args );
         if ( is_wp_error( $response ) ) {
+            Logger::error( 'HTTP error on GET ' . $url, [ 'err' => $response->get_error_message() ] );
             return [ 'success' => false, 'error' => $response->get_error_message() ];
         }
 
@@ -63,8 +65,10 @@ class Client {
 
         if ( 429 === (int) $code ) {
             usleep( 400000 );
+            Logger::debug( 'Retry after 429 on GET ' . $url );
             $response = wp_remote_get( $url, $args );
             if ( is_wp_error( $response ) ) {
+                Logger::error( 'HTTP error on GET retry ' . $url, [ 'err' => $response->get_error_message() ] );
                 return [ 'success' => false, 'error' => $response->get_error_message() ];
             }
             $code = wp_remote_retrieve_response_code( $response );
@@ -72,6 +76,9 @@ class Client {
         }
 
         $decoded = json_decode( $body, true );
+
+        Logger::debug( 'GET response ' . $url, [ 'code' => $code, 'body' => $decoded ?? $body ] );
+
         return [ 'success' => in_array( $code, [ 200, 201 ], true ), 'code' => $code, 'body' => $decoded ?? $body ];
     }
 

@@ -39,7 +39,7 @@ class BookingService {
             'consignments'  => [[
                 'product'        => $preset['serviceId'] ?? $preset['serviceID'] ?? '',
                 'customerNumber' => $this->settings->get_customer_no(),
-                'reference'      => (string) $order->get_order_number(),
+                'reference'      => $this->build_reference( (string) $order->get_order_number() ),
                 'parties' => [
                     'sender'    => $this->settings->get_sender_array(),
                     'recipient' => OrderData::get_recipient_from_order( $order ),
@@ -61,7 +61,14 @@ class BookingService {
             ];
         }
 
-        Logger::info( 'Booking request', [ 'order' => $order_id, 'payload' => $payload ] );
+        Logger::info( 'BookingService: book_order', [
+            'order'     => $order_id,
+            'service'   => $preset['serviceId'] ?? $preset['serviceID'] ?? '',
+            'weight_kg' => $weightKg,
+            'pickup'    => $params['pickup_point_id'] ?? '',
+        ] );
+
+        Logger::debug( 'Booking request', [ 'order' => $order_id, 'payload' => $payload ] );
 
         // Simulate if in test mode and missing credentials
         if ( $this->settings->is_test_mode() && ( ! $this->settings->get_uid() || ! $this->settings->get_api_key() ) ) {
@@ -98,5 +105,22 @@ class BookingService {
         $result = new BookingResult( $consignment, $labelUrl, $trackingUrl, $preset['serviceId'] ?? '', $now, $body );
 
         return $result;
+    }
+
+    /**
+     * Build the booking reference string.
+     *
+     * Combines the optional sender reference (configured in plugin settings)
+     * with the WooCommerce order number, separated by a space when both are
+     * present.  The result is trimmed to 35 characters — the Bring API maximum.
+     *
+     * @param string $order_number WooCommerce order number.
+     * @return string
+     */
+    private function build_reference( string $order_number ): string {
+        $prefix = trim( $this->settings->get_sender_reference() );
+        $ref    = $prefix !== '' ? $prefix . ' ' . $order_number : $order_number;
+
+        return mb_substr( $ref, 0, 35, 'UTF-8' );
     }
 }
