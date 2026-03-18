@@ -327,22 +327,23 @@ class ShippingMethod extends \WC_Shipping_Method {
 			return $label;
 		}
 
-		$extra = '';
+		// ── Always-visible summary (logo + delivery estimate) ─────────────────
+		// These appear for every option regardless of selection so shoppers can
+		// compare delivery times before choosing a method.
+		$summary = '';
 
-		// Logo.
 		$logo_url = $gui['logoUrl'] ?? '';
 		if ( $logo_url ) {
 			$alt_text = $gui['logo'] ?? $gui['displayName'] ?? __( 'Shipping provider logo', 'bbi' );
-			$extra .= '<img src="' . esc_url( $logo_url ) . '" alt="' . esc_attr( $alt_text ) . '" class="bbi-shipping-logo" />';
+			$summary .= '<img src="' . esc_url( $logo_url ) . '" alt="' . esc_attr( $alt_text ) . '" class="bbi-shipping-logo" />';
 		}
 
-		// Estimated delivery.
 		$delivery_date = $delivery['formattedExpectedDeliveryDate'] ?? '';
 		$working_days  = isset( $delivery['workingDays'] ) ? (int) $delivery['workingDays'] : 0;
 		if ( $delivery_date ) {
-			$extra .= '<span class="bbi-delivery-estimate">';
+			$summary .= '<span class="bbi-delivery-estimate">';
 			if ( $working_days > 0 ) {
-				$extra .= esc_html(
+				$summary .= esc_html(
 					sprintf(
 						/* translators: 1: expected delivery date, 2: number of working days */
 						_n(
@@ -356,7 +357,7 @@ class ShippingMethod extends \WC_Shipping_Method {
 					)
 				);
 			} else {
-				$extra .= esc_html(
+				$summary .= esc_html(
 					sprintf(
 						/* translators: %s: expected delivery date */
 						__( 'Expected delivery %s', 'bbi' ),
@@ -364,24 +365,34 @@ class ShippingMethod extends \WC_Shipping_Method {
 					)
 				);
 			}
-			$extra .= '</span>';
+			$summary .= '</span>';
 		}
 
-		// Description / help text.
+		// ── Details panel (description + pickup) ─────────────────────────────
+		// Revealed only for the selected option via CSS/JS to avoid crowding.
+		$details = '';
+
 		$desc = $gui['descriptionText'] ?? '';
 		if ( $desc ) {
-			$extra .= '<span class="bbi-shipping-desc">' . esc_html( $desc ) . '</span>';
+			$details .= '<span class="bbi-shipping-desc">' . esc_html( $desc ) . '</span>';
 		}
 
-		// Closest pickup point (returned by SERVICEPAKKE / hentested products).
 		$pickup = $gui['closestPickupPoint'] ?? '';
 		if ( $pickup ) {
-			$extra .= '<span class="bbi-pickup-hint">'
+			$details .= '<span class="bbi-pickup-hint">'
 				. esc_html__( 'Closest pickup point: ', 'bbi' )
 				. esc_html( $pickup )
 				. '</span>';
 		}
 
-		return $extra ? $label . '<span class="bbi-shipping-details">' . $extra . '</span>' : $label;
+		$output = $label;
+		if ( $summary ) {
+			$output .= '<span class="bbi-shipping-summary">' . $summary . '</span>';
+		}
+		if ( $details ) {
+			$output .= '<span class="bbi-shipping-details">' . $details . '</span>';
+		}
+
+		return $output;
 	}
 }

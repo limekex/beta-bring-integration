@@ -61,7 +61,12 @@ ul.woocommerce-shipping-rates li:focus-within {
 	outline-offset: 2px;
 }
 
-/* Reveal detail panel for the selected classic-checkout option */
+/* Reveal detail panel for the selected classic-checkout option.
+   Three complementary selectors for maximum browser compatibility:
+   1. Adjacent-sibling combinator — works in all modern browsers, no :has() needed.
+   2. :has() — modern browsers, higher specificity.
+   3. .bbi-selected — JS-added class fallback (checkout.js). */
+input[name^="shipping_method"]:checked + label .bbi-shipping-details,
 ul.woocommerce-shipping-rates li:has( input[name^="shipping_method"]:checked ) .bbi-shipping-details,
 ul.woocommerce-shipping-rates li.bbi-selected .bbi-shipping-details {
 	display: block;
@@ -152,6 +157,13 @@ li.bbi-selected .bbi-shipping-details {
 /* ══════════════════════════════════════════════════════════════════════════
    SHARED  (applies to both classic and Blocks checkout)
    ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Summary bar (always visible: logo + delivery estimate) ─────────────── */
+.bbi-shipping-summary {
+	display: block;
+	margin-top: 5px;
+	line-height: 1.4;
+}
 
 /* ── Logo ──────────────────────────────────────────────────────────────── */
 .bbi-shipping-logo {
