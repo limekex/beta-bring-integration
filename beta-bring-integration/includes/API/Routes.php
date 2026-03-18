@@ -4,6 +4,8 @@ namespace BeTA\Bring\API;
 use BeTA\Bring\Model\SettingsModel;
 use BeTA\Bring\Woo\OrderData;
 
+use BeTA\Bring\Woo\Logger;
+
 class Routes {
 	public static function register_routes(): void {
 		// Order label endpoint.
@@ -82,6 +84,7 @@ class Routes {
 	}
 
 	public static function handle_get_label( $request ) {
+		Logger::info( 'REST /order/{id}/label', [ 'id' => (int) $request['id'] ] );
 		$id = (int) $request['id'];
 		if ( ! $id ) {
 			return rest_ensure_response( [ 'error' => __( 'Invalid order id', 'bbi' ) ] );
@@ -113,8 +116,13 @@ class Routes {
 		$postal_code = sanitize_text_field( $request['postalCode'] );
 		$max         = (int) ( $request->get_param( 'max' ) ?? 10 );
 
+		Logger::info( 'REST /pickup-points (admin)', [ 'country' => $country, 'postal' => $postal_code, 'max' => $max ] );
+
 		$service = new PickupPointService( new SettingsModel() );
 		$data    = $service->get_by_postal_code( $country, $postal_code, min( $max, 50 ) );
+
+		$count = is_array( $data['pickupPoint'] ?? null ) ? count( $data['pickupPoint'] ) : 0;
+		Logger::info( 'REST /pickup-points (admin) result', [ 'count' => $count, 'has_error' => isset( $data['error'] ) ] );
 
 		return rest_ensure_response( $data );
 	}
@@ -122,6 +130,8 @@ class Routes {
 	public static function handle_postal_code( $request ) {
 		$country     = strtoupper( sanitize_text_field( $request['country'] ) );
 		$postal_code = sanitize_text_field( $request['postalCode'] );
+
+		Logger::info( 'REST /postal-code', [ 'country' => $country, 'postal' => $postal_code ] );
 
 		$service = new PostalCodeService( new SettingsModel() );
 		$data    = $service->lookup( $country, $postal_code );
@@ -132,6 +142,8 @@ class Routes {
 	public static function handle_shipping_guide( $request ) {
 		$from_postal = sanitize_text_field( $request->get_param( 'fromPostalCode' ) ?? '' );
 		$to_postal   = sanitize_text_field( $request->get_param( 'toPostalCode' ) ?? '' );
+
+		Logger::info( 'REST /shipping-guide', [ 'from' => $from_postal, 'to' => $to_postal ] );
 
 		if ( ! $from_postal || ! $to_postal ) {
 			return new \WP_Error(
@@ -163,6 +175,8 @@ class Routes {
 	}
 
 	public static function handle_customer_settings( $request ) {
+		Logger::info( 'REST /customer-settings' );
+
 		$service = new CustomerService( new SettingsModel() );
 		$data    = $service->get_user_settings();
 
@@ -179,12 +193,14 @@ class Routes {
 		$country     = strtoupper( sanitize_text_field( $request['country'] ) );
 		$postal_code = sanitize_text_field( $request['postalCode'] );
 
+		Logger::info( 'REST /checkout/pickup-points', [ 'country' => $country, 'postal' => $postal_code ] );
+
 		// Rate-limit by transient to prevent abuse on the public endpoint.
 		$throttle_key = 'bbi_pp_' . md5( $country . $postal_code . ( wp_get_session_token() ?: '' ) );
 		if ( get_transient( $throttle_key ) ) {
-			// Return cached result.
 			$cached = get_transient( $throttle_key . '_data' );
 			if ( is_array( $cached ) ) {
+				Logger::info( 'REST /checkout/pickup-points — returning cached', [ 'count' => count( $cached['pickupPoints'] ?? [] ) ] );
 				return rest_ensure_response( $cached );
 			}
 		}
@@ -192,18 +208,31 @@ class Routes {
 		$service = new PickupPointService( new SettingsModel() );
 		$data    = $service->get_by_postal_code( $country, $postal_code, 10 );
 
+		Logger::info( 'REST /checkout/pickup-points — Bring API response', [
+			'has_error'    => isset( $data['error'] ),
+			'top_keys'     => is_array( $data ) ? array_keys( $data ) : 'not_array',
+			'raw_pp_count' => is_array( $data['pickupPoint'] ?? null ) ? count( $data['pickupPoint'] ) : 'missing',
+		] );
+
 		// Simplify the response for the public endpoint.
 		$points = [];
 		$raw    = $data['pickupPoint'] ?? [];
 		if ( is_array( $raw ) ) {
 			foreach ( $raw as $pp ) {
+				// visitingAddress may be an object or a string depending on Bring's API version.
+				$addr = $pp['visitingAddress'] ?? $pp['address'] ?? '';
+				if ( is_array( $addr ) ) {
+					$addr = trim( ( $addr['street'] ?? '' ) . ' ' . ( $addr['postalCode'] ?? '' ) . ' ' . ( $addr['city'] ?? '' ) );
+				}
 				$points[] = [
 					'id'      => $pp['id'] ?? '',
 					'name'    => $pp['name'] ?? '',
-					'address' => trim( ( $pp['visitingAddress'] ?? $pp['address'] ?? '' ) . ', ' . ( $pp['postalCode'] ?? '' ) . ' ' . ( $pp['city'] ?? '' ), ', ' ),
+					'address' => trim( $addr . ', ' . ( $pp['postalCode'] ?? '' ) . ' ' . ( $pp['city'] ?? '' ), ', ' ),
 				];
 			}
 		}
+
+		Logger::info( 'REST /checkout/pickup-points — simplified', [ 'count' => count( $points ) ] );
 
 		$result = [ 'pickupPoints' => $points ];
 
@@ -219,6 +248,8 @@ class Routes {
 	 */
 	public static function handle_tracking( $request ) {
 		$order_id = (int) $request['order_id'];
+		Logger::info( 'REST /tracking', [ 'order_id' => $order_id ] );
+
 		$order    = wc_get_order( $order_id );
 
 		if ( ! $order ) {

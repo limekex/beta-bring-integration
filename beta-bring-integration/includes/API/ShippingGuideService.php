@@ -2,6 +2,7 @@
 namespace BeTA\Bring\API;
 
 use BeTA\Bring\Model\SettingsModel;
+use BeTA\Bring\Woo\Logger;
 
 /**
  * Bring Shipping Guide API v2.
@@ -78,12 +79,27 @@ class ShippingGuideService {
 			'consignments'         => [ $consignment ],
 		];
 
+		Logger::info( 'ShippingGuideService: POST', [
+			'from' => $from_postal . ' (' . $from_country . ')',
+			'to'   => $to_postal . ' (' . $to_country . ')',
+			'weight_g' => $weight_grams,
+			'products' => $product_ids,
+		] );
+
 		$resp = $this->client->post_json( self::PRODUCTS_URL, $body );
 
 		if ( ! $resp['success'] ) {
+			Logger::error( 'ShippingGuideService: request failed', [
+				'code'  => $resp['code'] ?? 'n/a',
+				'error' => $resp['error'] ?? 'unknown',
+			] );
 			return [ 'error' => $resp['error'] ?? __( 'Shipping Guide request failed', 'bbi' ), 'consignments' => [] ];
 		}
 
-		return is_array( $resp['body'] ) ? $resp['body'] : [];
+		$result = is_array( $resp['body'] ) ? $resp['body'] : [];
+		$product_count = count( $result['consignments'][0]['products'] ?? [] );
+		Logger::info( 'ShippingGuideService: response OK', [ 'product_count' => $product_count ] );
+
+		return $result;
 	}
 }

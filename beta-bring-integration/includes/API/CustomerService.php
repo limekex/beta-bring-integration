@@ -2,6 +2,7 @@
 namespace BeTA\Bring\API;
 
 use BeTA\Bring\Model\SettingsModel;
+use BeTA\Bring\Woo\Logger;
 
 /**
  * Mybring Customer / User Settings API.
@@ -42,12 +43,16 @@ class CustomerService {
 	 * @return array  Decoded response body, or ['error' => '...'] on failure.
 	 */
 	public function get_user_settings(): array {
+		Logger::info( 'CustomerService: GET user settings' );
+
 		$resp = $this->client->get( self::SETTINGS_URL );
 
 		if ( ! $resp['success'] ) {
+			Logger::error( 'CustomerService: request failed', [ 'error' => $resp['error'] ?? 'unknown' ] );
 			return [ 'error' => $resp['error'] ?? __( 'Customer settings request failed', 'bbi' ) ];
 		}
 
+		Logger::info( 'CustomerService: response OK' );
 		return is_array( $resp['body'] ) ? $resp['body'] : [];
 	}
 }

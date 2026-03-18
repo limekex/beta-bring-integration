@@ -2,6 +2,7 @@
 namespace BeTA\Bring\API;
 
 use BeTA\Bring\Model\SettingsModel;
+use BeTA\Bring\Woo\Logger;
 
 /**
  * Bring Address / Postal Code API.
@@ -34,12 +35,16 @@ class PostalCodeService {
 			rawurlencode( $postal_code )
 		);
 
+		Logger::info( 'PostalCodeService: GET ' . $url );
+
 		$resp = $this->client->get( $url );
 
 		if ( ! $resp['success'] ) {
+			Logger::error( 'PostalCodeService: request failed', [ 'error' => $resp['error'] ?? 'unknown' ] );
 			return [ 'error' => $resp['error'] ?? __( 'Postal Code request failed', 'bbi' ) ];
 		}
 
+		Logger::info( 'PostalCodeService: response OK' );
 		return is_array( $resp['body'] ) ? $resp['body'] : [];
 	}
 }

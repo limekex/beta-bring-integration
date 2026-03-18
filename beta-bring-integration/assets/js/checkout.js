@@ -140,8 +140,26 @@
 		var shipToDifferent = $( '#ship-to-different-address-checkbox' ).is( ':checked' );
 		var prefix = shipToDifferent ? '#shipping_' : '#billing_';
 		var postcode = $( prefix + 'postcode' ).val() || '';
-		var country  = $( prefix + 'country' ).val() || 'NO';
-		return { postcode: postcode.replace( /\s+/g, '' ), country: country.toUpperCase() };
+		var country  = $( prefix + 'country' ).val() || '';
+
+		// Fallback: try the other prefix.
+		if ( ! postcode ) {
+			var alt = shipToDifferent ? '#billing_' : '#shipping_';
+			postcode = $( alt + 'postcode' ).val() || '';
+			country  = country || $( alt + 'country' ).val() || '';
+		}
+
+		// Fallback: try common WC field selectors.
+		if ( ! postcode ) {
+			postcode = $( '[name="billing_postcode"], [name="shipping_postcode"], [name="postcode"]' ).filter( function () { return !!$( this ).val(); } ).first().val() || '';
+		}
+		if ( ! country ) {
+			country = $( '[name="billing_country"], [name="shipping_country"]' ).filter( function () { return !!$( this ).val(); } ).first().val() || 'NO';
+		}
+
+		var result = { postcode: postcode.replace( /\s+/g, '' ), country: country.toUpperCase() };
+		console.log( '[BBI] getDestination:', result );
+		return result;
 	}
 
 	/**
@@ -150,6 +168,8 @@
 	function loadPickupPoints() {
 		var $selected = getShippingLists().find( 'li.bbi-selected, li:has(input:checked)' ).first();
 		var $selector = $selected.find( '.bbi-pickup-selector' );
+
+		console.log( '[BBI] loadPickupPoints: selected li count:', $selected.length, 'selector count:', $selector.length );
 
 		if ( ! $selector.length ) {
 			// Selected method doesn't need pickup — clear hidden field.
@@ -162,11 +182,13 @@
 
 		var dest = getDestination();
 		if ( ! dest.postcode || dest.postcode.length < 3 ) {
+			console.log( '[BBI] loadPickupPoints: postal code too short or missing, skipping.', dest );
 			return;
 		}
 
 		var requestKey = dest.country + ':' + dest.postcode;
 		if ( requestKey === lastPickupRequest ) {
+			console.log( '[BBI] loadPickupPoints: already fetched for', requestKey );
 			return; // Already loaded for this destination.
 		}
 		lastPickupRequest = requestKey;
@@ -179,8 +201,11 @@
 			? bbi_checkout_pickup.rest_url
 			: '/wp-json/bbi/v1';
 
+		var ajaxUrl = restUrl + '/checkout/pickup-points/' + encodeURIComponent( dest.country ) + '/' + encodeURIComponent( dest.postcode );
+		console.log( '[BBI] loadPickupPoints: fetching', ajaxUrl );
+
 		$.ajax( {
-			url: restUrl + '/checkout/pickup-points/' + encodeURIComponent( dest.country ) + '/' + encodeURIComponent( dest.postcode ),
+			url: ajaxUrl,
 			method: 'GET',
 			dataType: 'json',
 			beforeSend: function ( xhr ) {
@@ -189,6 +214,7 @@
 				}
 			},
 			success: function ( data ) {
+				console.log( '[BBI] loadPickupPoints: API response', data );
 				var points = data.pickupPoints || [];
 				var options = '';
 
@@ -205,7 +231,8 @@
 
 				$select.html( options ).prop( 'disabled', false );
 			},
-			error: function () {
+			error: function ( xhr, status, err ) {
+				console.error( '[BBI] loadPickupPoints: AJAX error', status, err, xhr.responseText );
 				$select.html( '<option value="">' + ( window.bbi_checkout_i18n ? bbi_checkout_i18n.no_pickup : 'No pickup points found' ) + '</option>' );
 				$select.prop( 'disabled', false );
 			},
@@ -232,6 +259,12 @@
 		bindCardClick();
 		bindShippingChange();
 		bindPickupChange();
+
+		// Re-fetch pickup points when postcode or country changes.
+		$( document ).on( 'change', '#billing_postcode, #shipping_postcode, #billing_country, #shipping_country, [name="billing_postcode"], [name="shipping_postcode"]', function () {
+			lastPickupRequest = ''; // Reset so the next sync triggers a fresh fetch.
+			loadPickupPoints();
+		} );
 	} );
 
 	// Re-apply after WooCommerce fragment / AJAX updates.

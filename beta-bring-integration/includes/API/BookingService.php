@@ -61,6 +61,13 @@ class BookingService {
             ];
         }
 
+        Logger::info( 'BookingService: book_order', [
+            'order'     => $order_id,
+            'service'   => $preset['serviceId'] ?? $preset['serviceID'] ?? '',
+            'weight_kg' => $weightKg,
+            'pickup'    => $params['pickup_point_id'] ?? '',
+        ] );
+
         Logger::debug( 'Booking request', [ 'order' => $order_id, 'payload' => $payload ] );
 
         // Simulate if in test mode and missing credentials
