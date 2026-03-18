@@ -118,6 +118,12 @@ class Plugin {
 				$order->update_meta_data( OrderData::META_PICKUP_NAME, $pickup_name );
 			}
 		}
+
+		// Clear the session data so it doesn't carry over to the next order.
+		if ( function_exists( 'WC' ) && WC()->session ) {
+			WC()->session->set( 'bbi_pickup_point_id', '' );
+			WC()->session->set( 'bbi_pickup_point_name', '' );
+		}
 	}
 
 	public function enqueue_frontend_assets(): void {
@@ -152,11 +158,21 @@ class Plugin {
 			$customer_country  = WC()->customer->get_shipping_country() ?: WC()->customer->get_billing_country() ?: 'NO';
 		}
 
+		// Read any previously saved pickup point from the WC session.
+		$session_pickup_id   = '';
+		$session_pickup_name = '';
+		if ( function_exists( 'WC' ) && WC()->session ) {
+			$session_pickup_id   = WC()->session->get( 'bbi_pickup_point_id', '' );
+			$session_pickup_name = WC()->session->get( 'bbi_pickup_point_name', '' );
+		}
+
 		wp_localize_script( 'bbi-checkout', 'bbi_checkout_pickup', [
 			'rest_url'          => rest_url( 'bbi/v1' ),
 			'nonce'             => wp_create_nonce( 'wp_rest' ),
 			'customer_postcode' => $customer_postcode,
 			'customer_country'  => strtoupper( $customer_country ),
+			'session_pickup_id'   => $session_pickup_id,
+			'session_pickup_name' => $session_pickup_name,
 		] );
 		wp_localize_script( 'bbi-checkout', 'bbi_checkout_i18n', [
 			'loading'       => __( 'Loading…', 'bbi' ),

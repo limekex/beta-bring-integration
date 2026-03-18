@@ -234,18 +234,31 @@
 				var points = data.pickupPoints || [];
 				var options = '';
 
-				if ( ! points.length ) {
-					options = '<option value="">' + ( window.bbi_checkout_i18n ? bbi_checkout_i18n.no_pickup : 'No pickup points found' ) + '</option>';
-				} else {
-					options = '<option value="">' + ( window.bbi_checkout_i18n ? bbi_checkout_i18n.select_pickup : 'Select pickup point…' ) + '</option>';
-					for ( var i = 0; i < points.length; i++ ) {
-						options += '<option value="' + points[ i ].id + '" data-name="' + $( '<span>' ).text( points[ i ].name + ' – ' + points[ i ].address ).html() + '">'
+					// Check for a previously saved pickup in the WC session.
+					var savedId = ( window.bbi_checkout_pickup && bbi_checkout_pickup.session_pickup_id ) || '';
+
+					if ( ! points.length ) {
+						options = '<option value="">' + ( window.bbi_checkout_i18n ? bbi_checkout_i18n.no_pickup : 'No pickup points found' ) + '</option>';
+					} else {
+						options = '<option value="">' + ( window.bbi_checkout_i18n ? bbi_checkout_i18n.select_pickup : 'Select pickup point…' ) + '</option>';
+						for ( var i = 0; i < points.length; i++ ) {
+							var selected = ( points[ i ].id === savedId ) ? ' selected' : '';
+							options += '<option value="' + points[ i ].id + '"' + selected + ' data-name="' + $( '<span>' ).text( points[ i ].name + ' – ' + points[ i ].address ).html() + '">'
 							+ $( '<span>' ).text( points[ i ].name + ' – ' + points[ i ].address ).html()
 							+ '</option>';
 					}
 				}
 
 				$select.html( options ).prop( 'disabled', false );
+
+				// If a saved pickup was pre-selected, sync the hidden fields.
+				if ( savedId && $select.val() ) {
+					ensureHiddenField();
+					var $opt = $select.find( 'option:selected' );
+					$( 'input[name="bbi_pickup_point_id"]' ).val( $select.val() );
+					$( 'input[name="bbi_pickup_point_name"]' ).val( $opt.data( 'name' ) || $opt.text() );
+					console.log( '[BBI] Pre-selected saved pickup:', savedId );
+				}
 			},
 			error: function ( xhr, status, err ) {
 				console.error( '[BBI] loadPickupPoints: AJAX error', status, err, xhr.responseText );
@@ -261,8 +274,28 @@
 	function bindPickupChange() {
 		$( document ).on( 'change', '.bbi-pickup-select', function () {
 			var $opt = $( this ).find( 'option:selected' );
-			$( 'input[name="bbi_pickup_point_id"]' ).val( $( this ).val() );
-			$( 'input[name="bbi_pickup_point_name"]' ).val( $opt.data( 'name' ) || $opt.text() );
+			var pickupId   = $( this ).val();
+			var pickupName = $opt.data( 'name' ) || $opt.text();
+
+			$( 'input[name="bbi_pickup_point_id"]' ).val( pickupId );
+			$( 'input[name="bbi_pickup_point_name"]' ).val( pickupName );
+
+			// Persist to WC session so the choice survives cart → checkout navigation.
+			if ( pickupId && window.bbi_checkout_pickup && bbi_checkout_pickup.rest_url ) {
+				$.ajax( {
+					url: bbi_checkout_pickup.rest_url + '/checkout/pickup-point',
+					method: 'POST',
+					dataType: 'json',
+					contentType: 'application/json',
+					data: JSON.stringify( { pickup_id: pickupId, pickup_name: pickupName } ),
+					beforeSend: function ( xhr ) {
+						if ( bbi_checkout_pickup.nonce ) {
+							xhr.setRequestHeader( 'X-WP-Nonce', bbi_checkout_pickup.nonce );
+						}
+					},
+				} );
+				console.log( '[BBI] Saved pickup to session:', pickupId, pickupName );
+			}
 		} );
 	}
 
