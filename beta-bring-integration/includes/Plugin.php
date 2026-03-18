@@ -6,6 +6,7 @@ use BeTA\Bring\Admin\OrderMetaBox;
 use BeTA\Bring\Admin\OrderListColumns;
 use BeTA\Bring\Admin\Notices;
 use BeTA\Bring\Woo\BulkBooking;
+use BeTA\Bring\Woo\BlocksIntegration;
 use BeTA\Bring\Woo\ShippingMethod;
 use BeTA\Bring\API\Routes;
 
@@ -47,6 +48,9 @@ class Plugin {
 		// Bulk booking.
 		BulkBooking::init();
 
+		// WooCommerce Blocks / Store API integration (shipping rate extension data).
+		BlocksIntegration::init();
+
 		// Register Bring as a WooCommerce shipping method (for checkout rate display).
 		add_filter( 'woocommerce_shipping_methods', static function ( array $methods ): array {
 			$methods['bbi_bring'] = ShippingMethod::class;
@@ -80,10 +84,31 @@ class Plugin {
 
 	public function enqueue_frontend_assets(): void {
 		// Only load on cart and checkout pages.
-		if ( function_exists( 'is_cart' ) && ( is_cart() || is_checkout() ) ) {
-			wp_enqueue_style( 'bbi-checkout', BBI_URL . 'assets/css/checkout.css', [], BBI_VER );
-			wp_enqueue_script( 'bbi-checkout', BBI_URL . 'assets/js/checkout.js', [ 'jquery' ], BBI_VER, true );
+		if ( ! function_exists( 'is_cart' ) || ( ! is_cart() && ! is_checkout() ) ) {
+			return;
 		}
+
+		// Classic checkout: enriched labels via the woocommerce_cart_shipping_method_full_label filter.
+		wp_enqueue_style( 'bbi-checkout', BBI_URL . 'assets/css/checkout.css', [], BBI_VER );
+		wp_enqueue_script( 'bbi-checkout', BBI_URL . 'assets/js/checkout.js', [ 'jquery' ], BBI_VER, true );
+
+		// WooCommerce Blocks checkout: enrich shipping option cards via Store API extension data + DOM injection.
+		wp_enqueue_script( 'bbi-checkout-blocks', BBI_URL . 'assets/js/checkout-blocks.js', [], BBI_VER, true );
+		wp_localize_script(
+			'bbi-checkout-blocks',
+			'bbi_checkout',
+			[
+				'i18n' => [
+					/* translators: 1: expected delivery date, 2: number of working days */
+					'expected_delivery_days_singular' => __( 'Expected delivery %1$s (1 working day)', 'bbi' ),
+					/* translators: 1: expected delivery date, 2: number of working days */
+					'expected_delivery_days_plural'   => __( 'Expected delivery %1$s (%2$d working days)', 'bbi' ),
+					/* translators: %s: expected delivery date */
+					'expected_delivery_date'          => __( 'Expected delivery %s', 'bbi' ),
+					'closest_pickup'                  => __( 'Closest pickup point: ', 'bbi' ),
+				],
+			]
+		);
 	}
 
 	public function enqueue_admin_assets( string $hook ): void {
