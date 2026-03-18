@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly.
 }
 
-define( 'BBI_VER', '0.5.0' );
+define( 'BBI_VER', '0.5.1' );
 define( 'BBI_FILE', __FILE__ );
 define( 'BBI_DIR', dirname( __FILE__ ) );
 define( 'BBI_URL', plugin_dir_url( __FILE__ ) );

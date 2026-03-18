@@ -214,7 +214,11 @@ class ShippingMethod extends \WC_Shipping_Method {
 				$label = $preset_key;
 			}
 
-			$requires_pickup = ! empty( $preset['requiresPickupPoint'] );
+			// Auto-detect pickup services: Bring's Shipping Guide returns
+			// closestPickupPoint in guiInformation for pickup services, or
+			// the preset can explicitly set requiresPickupPoint.
+			$requires_pickup = ! empty( $preset['requiresPickupPoint'] )
+				|| ! empty( $gui_info['closestPickupPoint'] );
 
 			$this->add_rate( [
 				'id'        => $this->get_rate_id( sanitize_key( $preset_key ) ),
@@ -438,7 +442,8 @@ class ShippingMethod extends \WC_Shipping_Method {
 		}
 
 		// Add a pickup point selector for services that require it.
-		$requires_pickup = ! empty( $meta['bbi_requires_pickup'] );
+		// Detect from rate meta OR from the Bring API's closestPickupPoint.
+		$requires_pickup = ! empty( $meta['bbi_requires_pickup'] ) || ! empty( $pickup );
 		if ( $requires_pickup ) {
 			$details .= '<span class="bbi-pickup-selector" data-service-id="' . esc_attr( $meta['bbi_service_id'] ?? '' ) . '">'
 				. '<label class="bbi-pickup-label">' . esc_html__( 'Choose pickup point', 'bbi' ) . '</label>'
