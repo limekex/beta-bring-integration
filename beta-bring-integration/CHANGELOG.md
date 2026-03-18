@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.3.0
+
+### Fixed
+- **Fallback prices for all shipping options** — Bring Shipping Guide v2 always returns *numeric* product IDs (`3584`, `5800`, `5600`) even when the request sends legacy string codes (`PAKKE_I_POSTKASSEN`, `SERVICEPAKKE`, `PA_DOREN`). Added `LEGACY_CODE_MAP` in `ShippingMethod` so that API products are also indexed under their legacy aliases, allowing existing presets with string service IDs to resolve correct prices without any database changes.
+- **Version bump busts stale transient / session caches** — the API-response transient key and the WooCommerce shipping session cache key both include `BBI_VER`, so upgrading from 0.2.0 to 0.3.0 automatically discards old cached rates and ensures users see live Bring prices immediately.
+
+### Added
+- **Classic checkout card UI** — each shipping option is now styled as a selectable card with hover/focus effects. Details (logo, delivery estimate, description, closest pickup point) are shown **only for the selected option** via a CSS `:has()` rule with a JS `.bbi-selected` class fallback for older browsers.
+- **Full-width shipping row** — `checkout.js` moves the "Shipping" heading text inside the options cell and sets `colspan="2"`, so shipping options occupy the full table width instead of being squeezed into half the row.
+- **WooCommerce Blocks checkout enrichment** — `BlocksIntegration` registers a Store API extension exposing `gui_info` and `expected_delivery` on every BBI rate in `/wc/store/v1/cart`. `checkout-blocks.js` subscribes to the `wc/store/cart` Redux store and uses a `MutationObserver` to inject logo, delivery estimate, description, and pickup point hint into Blocks checkout shipping option cards.
+- **Updated default presets** — default `bbi_presets_json` now uses current numeric service IDs (`3584`, `5800`, `5600`) and corrects the max-weight for "Pakke i postkassen" from 2 kg to 5 kg (matching Bring's published limit).
+
 ## 0.2.0
 - **Shipping Guide API** — new `ShippingGuideService` queries available shipping products for a sender/recipient postal code pair (`GET /bbi/v1/shipping-guide`)
 - **Pickup Point API** — new `PickupPointService` looks up Bring pickup points by country + postal code (`GET /bbi/v1/pickup-points/{country}/{postalCode}`)
