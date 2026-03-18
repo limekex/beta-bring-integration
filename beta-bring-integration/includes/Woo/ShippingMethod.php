@@ -214,16 +214,19 @@ class ShippingMethod extends \WC_Shipping_Method {
 				$label = $preset_key;
 			}
 
+			$requires_pickup = ! empty( $preset['requiresPickupPoint'] );
+
 			$this->add_rate( [
 				'id'        => $this->get_rate_id( sanitize_key( $preset_key ) ),
 				'label'     => $label,
 				'cost'      => $cost,
 				'calc_tax'  => 'per_order',
 				'meta_data' => [
-					'bbi_preset_key'       => $preset_key,
-					'bbi_service_id'       => $service_id,
-					'bbi_gui_info'         => $gui_info,
+					'bbi_preset_key'        => $preset_key,
+					'bbi_service_id'        => $service_id,
+					'bbi_gui_info'          => $gui_info,
 					'bbi_expected_delivery' => $exp_delivery,
+					'bbi_requires_pickup'   => $requires_pickup,
 				],
 			] );
 		}
@@ -431,6 +434,17 @@ class ShippingMethod extends \WC_Shipping_Method {
 			$details .= '<span class="bbi-pickup-hint">'
 				. esc_html__( 'Closest pickup point: ', 'bbi' )
 				. esc_html( $pickup )
+				. '</span>';
+		}
+
+		// Add a pickup point selector for services that require it.
+		$requires_pickup = ! empty( $meta['bbi_requires_pickup'] );
+		if ( $requires_pickup ) {
+			$details .= '<span class="bbi-pickup-selector" data-service-id="' . esc_attr( $meta['bbi_service_id'] ?? '' ) . '">'
+				. '<label class="bbi-pickup-label">' . esc_html__( 'Choose pickup point', 'bbi' ) . '</label>'
+				. '<select class="bbi-pickup-select" name="bbi_pickup_point_id">'
+				. '<option value="">' . esc_html__( 'Loading pickup points…', 'bbi' ) . '</option>'
+				. '</select>'
 				. '</span>';
 		}
 

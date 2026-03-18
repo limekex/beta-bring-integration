@@ -9,6 +9,8 @@ use BeTA\Bring\Admin\Email\BookingEmail;
 use BeTA\Bring\Woo\BulkBooking;
 use BeTA\Bring\Woo\BlocksIntegration;
 use BeTA\Bring\Woo\ShippingMethod;
+use BeTA\Bring\Woo\TrackingPage;
+use BeTA\Bring\Woo\OrderData;
 use BeTA\Bring\API\Routes;
 
 class Plugin {
@@ -87,10 +89,54 @@ class Plugin {
 			$emails['BBI_Booking_Email'] = new BookingEmail();
 			return $emails;
 		} );
+
+		// Tracking section on My Account → View Order pages.
+		TrackingPage::init();
+
+		// Save the customer's pickup point choice from checkout to order meta.
+		add_action( 'woocommerce_checkout_create_order', [ $this, 'save_pickup_point_meta' ], 10, 2 );
+	}
+
+	/**
+	 * Save the customer's pickup point choice to order meta during checkout.
+	 *
+	 * @param \WC_Order $order The order being created.
+	 * @param array     $data  Posted checkout data.
+	 */
+	public function save_pickup_point_meta( \WC_Order $order, array $data ): void {
+		$pickup_id = isset( $_POST['bbi_pickup_point_id'] )
+			? sanitize_text_field( wp_unslash( $_POST['bbi_pickup_point_id'] ) )
+			: '';
+
+		if ( $pickup_id ) {
+			$order->update_meta_data( OrderData::META_PICKUP_POINT, $pickup_id );
+
+			$pickup_name = isset( $_POST['bbi_pickup_point_name'] )
+				? sanitize_text_field( wp_unslash( $_POST['bbi_pickup_point_name'] ) )
+				: '';
+			if ( $pickup_name ) {
+				$order->update_meta_data( OrderData::META_PICKUP_NAME, $pickup_name );
+			}
+		}
 	}
 
 	public function enqueue_frontend_assets(): void {
-		// Only load on cart and checkout pages.
+		// My Account → View Order: tracking assets.
+		if ( function_exists( 'is_account_page' ) && is_account_page() ) {
+			wp_enqueue_style( 'bbi-tracking', BBI_URL . 'assets/css/tracking.css', [], BBI_VER );
+			wp_enqueue_script( 'bbi-tracking', BBI_URL . 'assets/js/tracking.js', [], BBI_VER, true );
+			wp_localize_script( 'bbi-tracking', 'bbi_tracking_i18n', [
+				'loading'     => __( 'Loading tracking information…', 'bbi' ),
+				'error'       => __( 'Could not load tracking information.', 'bbi' ),
+				'not_booked'  => __( 'Shipment not yet booked.', 'bbi' ),
+				'delivered'   => __( 'Delivered', 'bbi' ),
+				'in_transit'  => __( 'In transit', 'bbi' ),
+				'ready'       => __( 'Ready for pickup', 'bbi' ),
+				'unknown'     => __( 'Unknown status', 'bbi' ),
+			] );
+		}
+
+		// Only load checkout assets on cart and checkout pages.
 		if ( ! function_exists( 'is_cart' ) || ( ! is_cart() && ! is_checkout() ) ) {
 			return;
 		}
@@ -98,6 +144,15 @@ class Plugin {
 		// Classic checkout: enriched labels via the woocommerce_cart_shipping_method_full_label filter.
 		wp_enqueue_style( 'bbi-checkout', BBI_URL . 'assets/css/checkout.css', [], BBI_VER );
 		wp_enqueue_script( 'bbi-checkout', BBI_URL . 'assets/js/checkout.js', [ 'jquery' ], BBI_VER, true );
+		wp_localize_script( 'bbi-checkout', 'bbi_checkout_pickup', [
+			'rest_url' => rest_url( 'bbi/v1' ),
+			'nonce'    => wp_create_nonce( 'wp_rest' ),
+		] );
+		wp_localize_script( 'bbi-checkout', 'bbi_checkout_i18n', [
+			'loading'       => __( 'Loading…', 'bbi' ),
+			'select_pickup' => __( 'Select pickup point…', 'bbi' ),
+			'no_pickup'     => __( 'No pickup points found', 'bbi' ),
+		] );
 
 		// WooCommerce Blocks checkout: enrich shipping option cards via Store API extension data + DOM injection.
 		wp_enqueue_script( 'bbi-checkout-blocks', BBI_URL . 'assets/js/checkout-blocks.js', [], BBI_VER, true );

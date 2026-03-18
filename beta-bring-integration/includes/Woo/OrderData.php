@@ -8,6 +8,8 @@ class OrderData {
     public const META_CONSIGNMENT  = '_bbi_consignment_no';
     public const META_SERVICE_ID   = '_bbi_service_id';
     public const META_BOOKED_AT    = '_bbi_booked_at';
+    public const META_PICKUP_POINT = '_bbi_pickup_point_id';
+    public const META_PICKUP_NAME  = '_bbi_pickup_point_name';
 
     /**
      * Calculate total weight for order-like object.

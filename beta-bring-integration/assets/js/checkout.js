@@ -7,9 +7,14 @@
  * 3. CSS `:has()` drives the selected highlight in modern browsers;
  *    `.bbi-selected` is the JS fallback.
  * 4. The accordion details panel expands only for the selected option.
+ * 5. If the selected service requires a pickup point, a dropdown is
+ *    populated from the REST API and the choice is stored in a hidden field.
  */
 ( function ( $ ) {
 	'use strict';
+
+	/** Track last-fetched postal code to avoid duplicate requests. */
+	var lastPickupRequest = '';
 
 	/**
 	 * Expand the shipping <tr> to span the full table width.
@@ -56,16 +61,14 @@
 			$ul.children( 'li' ).removeClass( 'bbi-selected' );
 			$ul.find( 'input[type="radio"]:checked, input[name^="shipping_method"]:checked' ).closest( 'li' ).addClass( 'bbi-selected' );
 		} );
+
+		loadPickupPoints();
 	}
 
 	/**
 	 * Force-hide radio inputs AND theme-drawn pseudo-element radios via inline styles.
-	 * Some themes / WC debug mode add inline display overrides.
-	 * Themes draw custom radios on label::before / label::after — we inject
-	 * a <style> tag to kill those too.
 	 */
 	function nukeRadios() {
-		// Hide the actual <input> elements.
 		getShippingLists().find( 'input[type="radio"]' ).each( function () {
 			this.style.setProperty( 'position', 'absolute', 'important' );
 			this.style.setProperty( 'width', '0', 'important' );
@@ -76,8 +79,6 @@
 			this.style.setProperty( 'clip', 'rect(0,0,0,0)', 'important' );
 		} );
 
-		// Inject a <style> tag to kill label::before / label::after pseudo-element radios,
-		// which cannot be styled via inline JavaScript.
 		if ( ! document.getElementById( 'bbi-nuke-label-radios' ) ) {
 			var style = document.createElement( 'style' );
 			style.id = 'bbi-nuke-label-radios';
@@ -101,8 +102,7 @@
 	 */
 	function bindCardClick() {
 		$( document ).on( 'click', '#shipping_method li, ul.woocommerce-shipping-methods li, ul.woocommerce-shipping-rates li', function ( e ) {
-			// Don't interfere with links or inputs inside the card.
-			if ( $( e.target ).is( 'a, input, select, textarea' ) ) {
+			if ( $( e.target ).is( 'a, input, select, textarea, option' ) || $( e.target ).closest( 'select, .bbi-pickup-selector' ).length ) {
 				return;
 			}
 
@@ -119,18 +119,126 @@
 		} );
 	}
 
+	/* ── Pickup point selector logic ────────────────────────────────────── */
+
+	/**
+	 * Ensure the hidden input for pickup point ID exists in the checkout form.
+	 */
+	function ensureHiddenField() {
+		if ( ! $( 'input[name="bbi_pickup_point_id"]' ).length ) {
+			$( 'form.checkout, form.woocommerce-checkout' ).append(
+				'<input type="hidden" name="bbi_pickup_point_id" value="" />' +
+				'<input type="hidden" name="bbi_pickup_point_name" value="" />'
+			);
+		}
+	}
+
+	/**
+	 * Read the customer's billing/shipping postal code and country from the checkout fields.
+	 */
+	function getDestination() {
+		var shipToDifferent = $( '#ship-to-different-address-checkbox' ).is( ':checked' );
+		var prefix = shipToDifferent ? '#shipping_' : '#billing_';
+		var postcode = $( prefix + 'postcode' ).val() || '';
+		var country  = $( prefix + 'country' ).val() || 'NO';
+		return { postcode: postcode.replace( /\s+/g, '' ), country: country.toUpperCase() };
+	}
+
+	/**
+	 * Load pickup points for the selected card's pickup selector, if applicable.
+	 */
+	function loadPickupPoints() {
+		var $selected = getShippingLists().find( 'li.bbi-selected, li:has(input:checked)' ).first();
+		var $selector = $selected.find( '.bbi-pickup-selector' );
+
+		if ( ! $selector.length ) {
+			// Selected method doesn't need pickup — clear hidden field.
+			$( 'input[name="bbi_pickup_point_id"]' ).val( '' );
+			$( 'input[name="bbi_pickup_point_name"]' ).val( '' );
+			return;
+		}
+
+		ensureHiddenField();
+
+		var dest = getDestination();
+		if ( ! dest.postcode || dest.postcode.length < 3 ) {
+			return;
+		}
+
+		var requestKey = dest.country + ':' + dest.postcode;
+		if ( requestKey === lastPickupRequest ) {
+			return; // Already loaded for this destination.
+		}
+		lastPickupRequest = requestKey;
+
+		var $select = $selector.find( '.bbi-pickup-select' );
+		$select.html( '<option value="">' + ( window.bbi_checkout_i18n ? bbi_checkout_i18n.loading : 'Loading…' ) + '</option>' );
+		$select.prop( 'disabled', true );
+
+		var restUrl = ( window.bbi_checkout_pickup && bbi_checkout_pickup.rest_url )
+			? bbi_checkout_pickup.rest_url
+			: '/wp-json/bbi/v1';
+
+		$.ajax( {
+			url: restUrl + '/checkout/pickup-points/' + encodeURIComponent( dest.country ) + '/' + encodeURIComponent( dest.postcode ),
+			method: 'GET',
+			dataType: 'json',
+			beforeSend: function ( xhr ) {
+				if ( window.bbi_checkout_pickup && bbi_checkout_pickup.nonce ) {
+					xhr.setRequestHeader( 'X-WP-Nonce', bbi_checkout_pickup.nonce );
+				}
+			},
+			success: function ( data ) {
+				var points = data.pickupPoints || [];
+				var options = '';
+
+				if ( ! points.length ) {
+					options = '<option value="">' + ( window.bbi_checkout_i18n ? bbi_checkout_i18n.no_pickup : 'No pickup points found' ) + '</option>';
+				} else {
+					options = '<option value="">' + ( window.bbi_checkout_i18n ? bbi_checkout_i18n.select_pickup : 'Select pickup point…' ) + '</option>';
+					for ( var i = 0; i < points.length; i++ ) {
+						options += '<option value="' + points[ i ].id + '" data-name="' + $( '<span>' ).text( points[ i ].name + ' – ' + points[ i ].address ).html() + '">'
+							+ $( '<span>' ).text( points[ i ].name + ' – ' + points[ i ].address ).html()
+							+ '</option>';
+					}
+				}
+
+				$select.html( options ).prop( 'disabled', false );
+			},
+			error: function () {
+				$select.html( '<option value="">' + ( window.bbi_checkout_i18n ? bbi_checkout_i18n.no_pickup : 'No pickup points found' ) + '</option>' );
+				$select.prop( 'disabled', false );
+			},
+		} );
+	}
+
+	/**
+	 * Sync the hidden field when the pickup dropdown changes.
+	 */
+	function bindPickupChange() {
+		$( document ).on( 'change', '.bbi-pickup-select', function () {
+			var $opt = $( this ).find( 'option:selected' );
+			$( 'input[name="bbi_pickup_point_id"]' ).val( $( this ).val() );
+			$( 'input[name="bbi_pickup_point_name"]' ).val( $opt.data( 'name' ) || $opt.text() );
+		} );
+	}
+
+	/* ── Initialisation ─────────────────────────────────────────────────── */
+
 	$( function () {
 		expandShippingRow();
 		nukeRadios();
 		syncSelectedCard();
 		bindCardClick();
 		bindShippingChange();
+		bindPickupChange();
 	} );
 
 	// Re-apply after WooCommerce fragment / AJAX updates.
 	$( document.body ).on( 'updated_cart_totals updated_checkout wc_fragments_refreshed', function () {
 		expandShippingRow();
 		nukeRadios();
+		lastPickupRequest = ''; // Reset so pickup is re-fetched with fresh DOM.
 		syncSelectedCard();
 	} );
 } )( jQuery );
