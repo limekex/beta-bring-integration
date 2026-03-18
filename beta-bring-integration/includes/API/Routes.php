@@ -57,29 +57,6 @@ class Routes {
 			'permission_callback' => [ __CLASS__, 'customer_order_permission' ],
 		] );
 
-		// Save pickup point selection to WC session (public — cart & checkout).
-		register_rest_route( 'bbi/v1', '/checkout/pickup-point', [
-			'methods'             => 'POST',
-			'callback'            => [ __CLASS__, 'handle_save_pickup_session' ],
-			'permission_callback' => '__return_true',
-		] );
-	}
-
-	/**
-	 * Save the customer's pickup point choice to the WC session so it persists from cart → checkout.
-	 */
-	public static function handle_save_pickup_session( \WP_REST_Request $request ): \WP_REST_Response {
-		$pickup_id   = sanitize_text_field( $request->get_param( 'pickup_id' ) ?? '' );
-		$pickup_name = sanitize_text_field( $request->get_param( 'pickup_name' ) ?? '' );
-
-		Logger::info( 'REST POST /checkout/pickup-point', [ 'pickup_id' => $pickup_id, 'pickup_name' => $pickup_name ] );
-
-		if ( function_exists( 'WC' ) && WC()->session ) {
-			WC()->session->set( 'bbi_pickup_point_id', $pickup_id );
-			WC()->session->set( 'bbi_pickup_point_name', $pickup_name );
-		}
-
-		return rest_ensure_response( [ 'success' => true ] );
 	}
 
 	public static function admin_permission(): bool {

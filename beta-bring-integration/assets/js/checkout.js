@@ -281,20 +281,13 @@
 			$( 'input[name="bbi_pickup_point_name"]' ).val( pickupName );
 
 			// Persist to WC session so the choice survives cart → checkout navigation.
-			if ( pickupId && window.bbi_checkout_pickup && bbi_checkout_pickup.rest_url ) {
-				$.ajax( {
-					url: bbi_checkout_pickup.rest_url + '/checkout/pickup-point',
-					method: 'POST',
-					dataType: 'json',
-					contentType: 'application/json',
-					data: JSON.stringify( { pickup_id: pickupId, pickup_name: pickupName } ),
-					beforeSend: function ( xhr ) {
-						if ( bbi_checkout_pickup.nonce ) {
-							xhr.setRequestHeader( 'X-WP-Nonce', bbi_checkout_pickup.nonce );
-						}
-					},
+			if ( pickupId && window.bbi_checkout_pickup && bbi_checkout_pickup.save_pickup_url ) {
+				$.post( bbi_checkout_pickup.save_pickup_url, {
+					security:    bbi_checkout_pickup.save_pickup_nonce,
+					pickup_id:   pickupId,
+					pickup_name: pickupName,
 				} );
-				console.log( '[BBI] Saved pickup to session:', pickupId, pickupName );
+				console.log( '[BBI] Saved pickup to session via WC AJAX:', pickupId, pickupName );
 			}
 		} );
 	}

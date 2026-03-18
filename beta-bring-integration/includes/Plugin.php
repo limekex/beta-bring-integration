@@ -78,6 +78,11 @@ class Plugin {
 		// REST routes.
 		add_action( 'rest_api_init', [ Routes::class, 'register_routes' ] );
 
+		// WC AJAX handler for saving pickup point to session.
+		// Using wc_ajax_ (not REST) because WC session is only available in the frontend AJAX pipeline.
+		add_action( 'wc_ajax_bbi_save_pickup', [ $this, 'ajax_save_pickup_to_session' ] );
+		add_action( 'wc_ajax_nopriv_bbi_save_pickup', [ $this, 'ajax_save_pickup_to_session' ] );
+
 		// Frontend CSS for enriched shipping rate labels in cart/checkout.
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_frontend_assets' ] );
 
@@ -126,6 +131,25 @@ class Plugin {
 		}
 	}
 
+	/**
+	 * WC AJAX handler: save the customer's pickup point choice to the WC session.
+	 */
+	public function ajax_save_pickup_to_session(): void {
+		check_ajax_referer( 'bbi-save-pickup', 'security' );
+
+		$pickup_id   = isset( $_POST['pickup_id'] ) ? sanitize_text_field( wp_unslash( $_POST['pickup_id'] ) ) : '';
+		$pickup_name = isset( $_POST['pickup_name'] ) ? sanitize_text_field( wp_unslash( $_POST['pickup_name'] ) ) : '';
+
+		\BeTA\Bring\Woo\Logger::info( 'wc_ajax bbi_save_pickup', [ 'pickup_id' => $pickup_id, 'pickup_name' => $pickup_name ] );
+
+		if ( function_exists( 'WC' ) && WC()->session ) {
+			WC()->session->set( 'bbi_pickup_point_id', $pickup_id );
+			WC()->session->set( 'bbi_pickup_point_name', $pickup_name );
+		}
+
+		wp_send_json_success();
+	}
+
 	public function enqueue_frontend_assets(): void {
 		// My Account → View Order: tracking assets.
 		if ( function_exists( 'is_account_page' ) && is_account_page() ) {
@@ -167,10 +191,12 @@ class Plugin {
 		}
 
 		wp_localize_script( 'bbi-checkout', 'bbi_checkout_pickup', [
-			'rest_url'          => rest_url( 'bbi/v1' ),
-			'nonce'             => wp_create_nonce( 'wp_rest' ),
-			'customer_postcode' => $customer_postcode,
-			'customer_country'  => strtoupper( $customer_country ),
+			'rest_url'            => rest_url( 'bbi/v1' ),
+			'nonce'               => wp_create_nonce( 'wp_rest' ),
+			'save_pickup_url'     => \WC_AJAX::get_endpoint( 'bbi_save_pickup' ),
+			'save_pickup_nonce'   => wp_create_nonce( 'bbi-save-pickup' ),
+			'customer_postcode'   => $customer_postcode,
+			'customer_country'    => strtoupper( $customer_country ),
 			'session_pickup_id'   => $session_pickup_id,
 			'session_pickup_name' => $session_pickup_name,
 		] );
