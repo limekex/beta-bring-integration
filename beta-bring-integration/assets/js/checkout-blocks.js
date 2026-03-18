@@ -190,7 +190,9 @@
 	 * browsers).
 	 */
 	function syncSelectedBlocks() {
-		var inputs = document.querySelectorAll( 'input[name^="radio-control-wc-shipping-rates"]' );
+		var inputs = Array.prototype.slice.call(
+			document.querySelectorAll( 'input[name^="radio-control-wc-shipping-rates"]' )
+		);
 
 		inputs.forEach( function ( input ) {
 			var container = input.closest( 'li' ) || input.parentElement;
@@ -219,7 +221,9 @@
 					rateMap  = newMap;
 					// A rate map change means rates just loaded or changed –
 					// reset enrichment flags and re-enrich the DOM.
-					document.querySelectorAll( '[data-bbi-enriched]' ).forEach( function ( el ) {
+					Array.prototype.slice.call(
+						document.querySelectorAll( '[data-bbi-enriched]' )
+					).forEach( function ( el ) {
 						delete el.dataset.bbiEnriched;
 						var old = el.querySelector( '.bbi-shipping-details' );
 						if ( old ) {
