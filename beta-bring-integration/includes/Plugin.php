@@ -5,6 +5,7 @@ use BeTA\Bring\Admin\Settings;
 use BeTA\Bring\Admin\OrderMetaBox;
 use BeTA\Bring\Admin\OrderListColumns;
 use BeTA\Bring\Admin\Notices;
+use BeTA\Bring\Admin\Email\BookingEmail;
 use BeTA\Bring\Woo\BulkBooking;
 use BeTA\Bring\Woo\BlocksIntegration;
 use BeTA\Bring\Woo\ShippingMethod;
@@ -80,6 +81,12 @@ class Plugin {
 
 		// Notices helper.
 		Notices::init();
+
+		// Register custom WooCommerce email for Bring shipment booking notifications.
+		add_filter( 'woocommerce_email_classes', static function ( array $emails ): array {
+			$emails['BBI_Booking_Email'] = new BookingEmail();
+			return $emails;
+		} );
 	}
 
 	public function enqueue_frontend_assets(): void {

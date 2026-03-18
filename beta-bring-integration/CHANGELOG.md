@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased
 
+## 0.4.0
+
+### Added
+- **Bring shipment notification email** — A custom WooCommerce email (`bbi_shipment_booked`) is now sent to the customer automatically whenever a Bring shipment is booked (from the order meta box or bulk booking). The email includes the consignment number, a clickable tracking link, and the Bring service name. The template can be customised via WooCommerce → Settings → Emails → "Bring shipment booked", and overridden by copying `templates/emails/bbi-shipment-booked.php` to `yourtheme/woocommerce/emails/`.
+- **Sender logo URL** field (`bbi_sender_logo_url`) added to WooCommerce → Settings → Shipping → BeTA Bring → Sender details section. The logo is embedded in the shipment notification email header.
+- **Sender reference** field (`bbi_sender_reference`) added to the Sender details section. When set, this reference prefix is prepended to the WooCommerce order number in every Bring booking request (visible on the shipping label and in Mybring reports). Limited to 35 characters total per Bring API specification.
+
+### Fixed
+- `get_cart was called incorrectly` warnings in the WordPress debug log: these originate from the `WC_Donate_Checkout` third-party plugin calling `WC_Cart::get_cart()` too early (during `widgets_init` before `wp_loaded`). BeTA Bring Integration does not appear in the call stack and requires no code change on our side.
+
 ## 0.3.0
 
 ### Fixed

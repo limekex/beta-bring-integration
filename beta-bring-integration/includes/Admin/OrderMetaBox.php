@@ -179,6 +179,16 @@ class OrderMetaBox {
 
 			$order->save();
 
+			/**
+			 * Fires after a Bring shipment is successfully booked.
+			 *
+			 * Hooked by BookingEmail to send the customer notification.
+			 *
+			 * @param \WC_Order $order       The WooCommerce order.
+			 * @param array    $arr         Booking result data (consignment_no, tracking_url, …).
+			 */
+			do_action( 'bbi_shipment_booked', $order, $arr );
+
 			wp_send_json_success( [ 'message' => __( 'Booked successfully', 'bbi' ), 'data' => $arr ] );
 		} catch ( WP_Error $e ) {
 			wp_send_json_error( [ 'message' => $e->get_error_message() ] );

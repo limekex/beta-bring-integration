@@ -114,6 +114,22 @@ class Settings {
                 'desc_tip' => true,
                 'default'  => 'NO',
             ],
+            [
+                'title'    => __( 'Logo URL', 'bbi' ),
+                'id'       => 'bbi_sender_logo_url',
+                'type'     => 'url',
+                'desc'     => __( 'Full URL to your company logo image. Used as a header image in shipment notification emails sent to customers. Leave blank to omit the logo.', 'bbi' ),
+                'desc_tip' => true,
+                'default'  => '',
+            ],
+            [
+                'title'    => __( 'Sender reference', 'bbi' ),
+                'id'       => 'bbi_sender_reference',
+                'type'     => 'text',
+                'desc'     => __( 'Default sender reference included in every Bring booking (e.g. your company code or internal reference). Appears on the shipping label and in Mybring reports. The WooCommerce order number is always appended automatically.', 'bbi' ),
+                'desc_tip' => true,
+                'default'  => '',
+            ],
             [ 'type' => 'sectionend', 'id' => 'bbi_sender' ],
 
             [ 'title' => __( 'Behaviour', 'bbi' ), 'type' => 'title', 'id' => 'bbi_behaviour' ],

@@ -73,6 +73,9 @@ class BulkBooking {
 
 				$order->save();
 
+				/** This action is documented in includes/Admin/OrderMetaBox.php */
+				do_action( 'bbi_shipment_booked', $order, $arr );
+
 				$success++;
 			} catch ( \Exception $e ) {
 				$fail++;

@@ -3,7 +3,7 @@
  * Plugin Name: BeTA Bring Integration
  * Plugin URI:  https://example.com/beta-bring-integration
  * Description: Bring booking integration for WooCommerce — book shipments and fetch labels from the order screen. Integrates Shipping Guide, Pickup Point, Postal Code and Customer APIs.
- * Version:     0.3.0
+ * Version:     0.4.0
  * Author:      BeTA iT
  * Requires at least: 6.3
  * Requires PHP: 8.1
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly.
 }
 
-define( 'BBI_VER', '0.3.0' );
+define( 'BBI_VER', '0.4.0' );
 define( 'BBI_FILE', __FILE__ );
 define( 'BBI_DIR', dirname( __FILE__ ) );
 define( 'BBI_URL', plugin_dir_url( __FILE__ ) );
