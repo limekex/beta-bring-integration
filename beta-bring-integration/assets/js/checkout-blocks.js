@@ -33,6 +33,11 @@
 			.replace( /"/g, '&quot;' );
 	}
 
+	function tryParseJSON( val ) {
+		if ( typeof val !== 'string' ) { return val; }
+		try { return JSON.parse( val ); } catch ( e ) { return null; }
+	}
+
 	/**
 	 * Build a flat map: { rateId → bbiData } from the WC Blocks Redux store.
 	 * Returns an empty object if the store is not yet available.
@@ -66,6 +71,24 @@
 				var rates = pkg.shipping_rates || [];
 				rates.forEach( function ( rate ) {
 					var bbi = rate.extensions && rate.extensions.bbi;
+
+					// Fallback: read from rate meta_data when the
+					// cart-shipping-rate Store API endpoint is unavailable.
+					if ( ! bbi && rate.meta_data && Array.isArray( rate.meta_data ) ) {
+						var gui = null;
+						var del = null;
+						rate.meta_data.forEach( function ( m ) {
+							if ( m.key === 'bbi_gui_info' ) {
+								gui = tryParseJSON( m.value );
+							} else if ( m.key === 'bbi_expected_delivery' ) {
+								del = tryParseJSON( m.value );
+							}
+						} );
+						if ( gui || del ) {
+							bbi = { gui_info: gui || {}, expected_delivery: del || {} };
+						}
+					}
+
 					if ( bbi && rate.rate_id ) {
 						map[ rate.rate_id ] = bbi;
 					}
@@ -95,53 +118,63 @@
 
 		var gui      = bbiData.gui_info || {};
 		var delivery = bbiData.expected_delivery || {};
-		var extra    = '';
 		var i18n     = ( window.bbi_checkout && window.bbi_checkout.i18n ) ? window.bbi_checkout.i18n : {};
 
-		// Logo.
+		// ── Inject logo into the label area ──────────────────────────
 		if ( gui.logoUrl ) {
-			extra += '<img src="' + escHtml( gui.logoUrl ) + '" alt="' + escHtml( gui.logo || '' ) + '" class="bbi-shipping-logo" />';
+			var labelEl = container.querySelector( 'label' );
+			if ( labelEl && ! labelEl.querySelector( '.bbi-shipping-logo' ) ) {
+				var logo = document.createElement( 'img' );
+				logo.src       = gui.logoUrl;
+				logo.alt       = gui.logo || gui.displayName || '';
+				logo.className = 'bbi-shipping-logo';
+				labelEl.insertBefore( logo, labelEl.firstChild );
+			}
 		}
 
-		// Delivery estimate.
+		// ── Delivery estimate ────────────────────────────────────────
 		var deliveryDate = delivery.formattedExpectedDeliveryDate || '';
 		var workingDays  = parseInt( delivery.workingDays || '0', 10 );
+		var estimate     = '';
 
 		if ( deliveryDate ) {
-			var dText;
 			var tpl;
 			if ( workingDays === 1 ) {
-				tpl   = i18n.expected_delivery_days_singular || 'Expected delivery %1$s (1 working day)';
-				dText = tpl.replace( '%1$s', escHtml( deliveryDate ) );
+				tpl     = i18n.expected_delivery_days_singular || 'Expected delivery %1$s (1 working day)';
+				estimate = tpl.replace( '%1$s', escHtml( deliveryDate ) );
 			} else if ( workingDays > 1 ) {
-				tpl   = i18n.expected_delivery_days_plural || 'Expected delivery %1$s (%2$d working days)';
-				dText = tpl.replace( '%1$s', escHtml( deliveryDate ) ).replace( '%2$d', workingDays );
+				tpl     = i18n.expected_delivery_days_plural || 'Expected delivery %1$s (%2$d working days)';
+				estimate = tpl.replace( '%1$s', escHtml( deliveryDate ) ).replace( '%2$d', workingDays );
 			} else {
-				tpl   = i18n.expected_delivery_date || 'Expected delivery %s';
-				dText = tpl.replace( '%s', escHtml( deliveryDate ) );
+				tpl     = i18n.expected_delivery_date || 'Expected delivery %s';
+				estimate = tpl.replace( '%s', escHtml( deliveryDate ) );
 			}
-			extra += '<span class="bbi-delivery-estimate">' + dText + '</span>';
 		}
 
-		// Description.
+		if ( estimate ) {
+			var estEl = document.createElement( 'span' );
+			estEl.className = 'bbi-delivery-estimate';
+			estEl.textContent = estimate.replace( /&amp;/g, '&' ).replace( /&lt;/g, '<' ).replace( /&gt;/g, '>' );
+			container.appendChild( estEl );
+		}
+
+		// ── Accordion details (description + pickup) ─────────────────
+		var detailsHtml = '';
 		if ( gui.descriptionText ) {
-			extra += '<span class="bbi-shipping-desc">' + escHtml( gui.descriptionText ) + '</span>';
+			detailsHtml += '<span class="bbi-shipping-desc">' + escHtml( gui.descriptionText ) + '</span>';
 		}
 
-		// Closest pickup point.
 		if ( gui.closestPickupPoint ) {
 			var pickupLabel = ( i18n.closest_pickup || 'Closest pickup point: ' );
-			extra += '<span class="bbi-pickup-hint">' + escHtml( pickupLabel ) + escHtml( gui.closestPickupPoint ) + '</span>';
+			detailsHtml += '<span class="bbi-pickup-hint">' + escHtml( pickupLabel ) + escHtml( gui.closestPickupPoint ) + '</span>';
 		}
 
-		if ( ! extra ) {
-			return;
+		if ( detailsHtml ) {
+			var details = document.createElement( 'div' );
+			details.className = 'bbi-shipping-details';
+			details.innerHTML = detailsHtml;
+			container.appendChild( details );
 		}
-
-		var details = document.createElement( 'div' );
-		details.className = 'bbi-shipping-details';
-		details.innerHTML = extra;
-		container.appendChild( details );
 	}
 
 	/**

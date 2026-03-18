@@ -108,6 +108,7 @@ class ShippingMethod extends \WC_Shipping_Method {
 		$presets = $this->bbi_settings->get_presets();
 
 		if ( empty( $presets ) ) {
+			Logger::debug( 'calculate_shipping: No presets configured — skipping rate calculation.' );
 			return;
 		}
 
@@ -118,6 +119,7 @@ class ShippingMethod extends \WC_Shipping_Method {
 		$to_country   = $package['destination']['country'] ?? 'NO';
 
 		if ( ! $from_postal || ! $to_postal ) {
+			Logger::debug( 'calculate_shipping: Missing postal code — from=' . $from_postal . ' to=' . $to_postal );
 			return;
 		}
 
@@ -155,6 +157,14 @@ class ShippingMethod extends \WC_Shipping_Method {
 		// configure product weights.  ShippingGuideService enforces a minimum of
 		// 1 gram for the package grossWeight so the API always receives a valid body.
 		$api_products = $this->get_api_products( $from_postal, $from_country, $to_postal, $to_country, $weight_grams, $service_ids );
+
+		if ( empty( $api_products ) ) {
+			Logger::debug( 'calculate_shipping: Shipping Guide returned no products.', [
+				'from' => $from_postal,
+				'to'   => $to_postal,
+				'ids'  => $service_ids,
+			] );
+		}
 
 		$fallback = $this->get_option( 'fallback_cost' );
 
@@ -256,6 +266,18 @@ class ShippingMethod extends \WC_Shipping_Method {
 
 		$api_data = $this->guide->get_products( $from_postal, $to_postal, $service_ids, $opts );
 
+		// If the API returned an error, do NOT cache — let the next request
+		// retry so rates appear as soon as the issue is resolved.
+		if ( isset( $api_data['error'] ) ) {
+			Logger::error( 'Shipping Guide API error — rates will be unavailable until resolved.', [
+				'error'        => $api_data['error'],
+				'from_postal'  => $from_postal,
+				'to_postal'    => $to_postal,
+				'service_ids'  => $service_ids,
+			] );
+			return [];
+		}
+
 		$indexed  = [];
 		$products = $api_data['consignments'][0]['products'] ?? [];
 		if ( is_array( $products ) ) {
@@ -301,9 +323,11 @@ class ShippingMethod extends \WC_Shipping_Method {
 	}
 
 	/**
-	 * Enrich the shipping rate label in the cart/checkout with the Bring
-	 * logo, estimated delivery date, description text, and closest pickup
-	 * point (for pickup-point services).
+	 * Enrich the shipping rate label in the cart/checkout.
+	 *
+	 * Replaces the default "Name: kr123,00" label with a structured card
+	 * layout:  logo + name on the left, price on the right, delivery
+	 * estimate below, and an accordion panel for description / pickup.
 	 *
 	 * Registered unconditionally via Plugin::init() so it fires even when
 	 * the shipping method is not re-instantiated (i.e. cached-rate requests).
@@ -327,23 +351,49 @@ class ShippingMethod extends \WC_Shipping_Method {
 			return $label;
 		}
 
-		// ── Always-visible summary (logo + delivery estimate) ─────────────────
-		// These appear for every option regardless of selection so shoppers can
-		// compare delivery times before choosing a method.
-		$summary = '';
+		// ── Parse the original WooCommerce label ──────────────────────────────
+		// WooCommerce generates "Label: <span ...>kr123,00</span>".
+		// Extract the name (before the colon) and keep the price span intact.
+		$name  = '';
+		$price = '';
+		if ( preg_match( '/^(.+?):\s*(<span\b.+<\/span>|<bdi\b.+<\/bdi>)\s*$/s', $label, $m ) ) {
+			$name  = trim( $m[1] );
+			$price = trim( $m[2] );
+		} else {
+			// Fallback: treat the whole label as the name.
+			$name = wp_strip_all_tags( $label );
+		}
+
+		// ── Header row: [logo + name]  [price] ──────────────────────────────
+		$left = '';
 
 		$logo_url = $gui['logoUrl'] ?? '';
 		if ( $logo_url ) {
 			$alt_text = $gui['logo'] ?? $gui['displayName'] ?? __( 'Shipping provider logo', 'bbi' );
-			$summary .= '<img src="' . esc_url( $logo_url ) . '" alt="' . esc_attr( $alt_text ) . '" class="bbi-shipping-logo" />';
+			$left .= '<img src="' . esc_url( $logo_url ) . '" alt="' . esc_attr( $alt_text ) . '" class="bbi-shipping-logo" />';
 		}
 
+		$left .= '<span class="bbi-shipping-name">' . esc_html( $name ) . '</span>';
+
+		$right = '';
+		if ( $price ) {
+			$right = '<span class="bbi-shipping-price">' . $price . '</span>';
+		}
+
+		$output  = '<span class="bbi-shipping-header">';
+		$output .= '<span class="bbi-shipping-header-left">' . $left . '</span>';
+		if ( $right ) {
+			$output .= '<span class="bbi-shipping-header-right">' . $right . '</span>';
+		}
+		$output .= '</span>';
+
+		// ── Delivery estimate ────────────────────────────────────────────────
 		$delivery_date = $delivery['formattedExpectedDeliveryDate'] ?? '';
 		$working_days  = isset( $delivery['workingDays'] ) ? (int) $delivery['workingDays'] : 0;
 		if ( $delivery_date ) {
-			$summary .= '<span class="bbi-delivery-estimate">';
+			$output .= '<span class="bbi-delivery-estimate">';
 			if ( $working_days > 0 ) {
-				$summary .= esc_html(
+				$output .= esc_html(
 					sprintf(
 						/* translators: 1: expected delivery date, 2: number of working days */
 						_n(
@@ -357,7 +407,7 @@ class ShippingMethod extends \WC_Shipping_Method {
 					)
 				);
 			} else {
-				$summary .= esc_html(
+				$output .= esc_html(
 					sprintf(
 						/* translators: %s: expected delivery date */
 						__( 'Expected delivery %s', 'bbi' ),
@@ -365,11 +415,10 @@ class ShippingMethod extends \WC_Shipping_Method {
 					)
 				);
 			}
-			$summary .= '</span>';
+			$output .= '</span>';
 		}
 
-		// ── Details panel (description + pickup) ─────────────────────────────
-		// Revealed only for the selected option via CSS/JS to avoid crowding.
+		// ── Accordion details (description + pickup) ─────────────────────────
 		$details = '';
 
 		$desc = $gui['descriptionText'] ?? '';
@@ -385,10 +434,6 @@ class ShippingMethod extends \WC_Shipping_Method {
 				. '</span>';
 		}
 
-		$output = $label;
-		if ( $summary ) {
-			$output .= '<span class="bbi-shipping-summary">' . $summary . '</span>';
-		}
 		if ( $details ) {
 			$output .= '<span class="bbi-shipping-details">' . $details . '</span>';
 		}

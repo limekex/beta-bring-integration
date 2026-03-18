@@ -30,13 +30,21 @@ class BlocksIntegration {
 			return;
 		}
 
-		woocommerce_store_api_register_endpoint_data( [
-			'endpoint'        => 'cart-shipping-rate',
-			'namespace'       => 'bbi',
-			'data_callback'   => [ self::class, 'get_rate_extension_data' ],
-			'schema_callback' => [ self::class, 'get_rate_extension_schema' ],
-			'schema_type'     => ARRAY_A,
-		] );
+		// 'cart-shipping-rate' was added in WooCommerce 9.x.
+		// Older versions only accept cart-item, cart, checkout, product.
+		// When the endpoint is unavailable the JS falls back to reading
+		// BBI data from each rate's meta_data array (see checkout-blocks.js).
+		try {
+			woocommerce_store_api_register_endpoint_data( [
+				'endpoint'        => 'cart-shipping-rate',
+				'namespace'       => 'bbi',
+				'data_callback'   => [ self::class, 'get_rate_extension_data' ],
+				'schema_callback' => [ self::class, 'get_rate_extension_schema' ],
+				'schema_type'     => ARRAY_A,
+			] );
+		} catch ( \Exception $e ) {
+			// Endpoint not supported in this WC version — meta_data fallback is used.
+		}
 	}
 
 	/**

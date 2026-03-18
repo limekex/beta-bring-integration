@@ -1,153 +1,366 @@
-/* Bring shipping rate label enhancements – cart & checkout */
-/* Covers both classic shortcode checkout and WooCommerce Blocks checkout.   */
+/* Bring shipping – full-width accordion card selector */
+/* Covers both classic shortcode checkout and WooCommerce Blocks checkout. */
 
 /* ══════════════════════════════════════════════════════════════════════════
-   CLASSIC CHECKOUT  (ul.woocommerce-shipping-rates rendered by shortcode)
+   DESIGN TOKENS  (CSS custom properties for light / dark adaptability)
+   Override these on a parent element or in your theme to customise.
+   ══════════════════════════════════════════════════════════════════════════ */
+:root {
+	--bbi-card-border: #dfe3e8;
+	--bbi-card-bg: transparent;
+	--bbi-card-hover-bg: #f8fafc;
+	--bbi-card-selected-bg: #f0f7ff;
+	--bbi-accent: #007cba;
+	--bbi-text: #1e1e1e;
+	--bbi-text-muted: #6b7280;
+	--bbi-text-secondary: #374151;
+	--bbi-divider: #e5e7eb;
+	--bbi-indicator-border: #c4c9d0;
+	--bbi-indicator-bg: #fff;
+}
+
+@media ( prefers-color-scheme: dark ) {
+	:root {
+		--bbi-card-border: #3a3f47;
+		--bbi-card-hover-bg: rgba( 255, 255, 255, 0.06 );
+		--bbi-card-selected-bg: rgba( 0, 124, 186, 0.15 );
+		--bbi-text: #e4e6ea;
+		--bbi-text-muted: #9ca3af;
+		--bbi-text-secondary: #c8ccd2;
+		--bbi-divider: #3a3f47;
+		--bbi-indicator-border: #5a5f67;
+		--bbi-indicator-bg: #2a2d33;
+	}
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CLASSIC CHECKOUT  (ul#shipping_method / ul.woocommerce-shipping-methods)
+   WC uses <ul id="shipping_method" class="woocommerce-shipping-methods">
    ══════════════════════════════════════════════════════════════════════════ */
 
+/* Target both the class WC uses and #shipping_method for safety */
+#shipping_method,
+ul.woocommerce-shipping-methods,
 ul.woocommerce-shipping-rates {
-	list-style: none;
-	padding: 4px 0 0;
-	margin: 0;
+	list-style: none !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	width: 100%;
 }
 
+#shipping_method li,
+ul.woocommerce-shipping-methods li,
 ul.woocommerce-shipping-rates li {
-	border: 1px solid #e0e0e0;
-	border-radius: 6px;
-	margin-bottom: 8px;
-	padding: 10px 14px 10px 12px;
+	display: block;
+	position: relative;
+	border: 1px solid var( --bbi-card-border );
+	background: var( --bbi-card-bg );
+	margin-bottom: -1px;
+	padding: 0;
 	cursor: pointer;
-	transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+	transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+	text-align: left;
+	list-style: none !important;
 }
 
-/* Hover – subtle lift */
+#shipping_method li:first-child,
+ul.woocommerce-shipping-methods li:first-child,
+ul.woocommerce-shipping-rates li:first-child {
+	border-radius: 8px 8px 0 0;
+}
+
+#shipping_method li:last-child,
+ul.woocommerce-shipping-methods li:last-child,
+ul.woocommerce-shipping-rates li:last-child {
+	border-radius: 0 0 8px 8px;
+	margin-bottom: 0;
+}
+
+#shipping_method li:only-child,
+ul.woocommerce-shipping-methods li:only-child,
+ul.woocommerce-shipping-rates li:only-child {
+	border-radius: 8px;
+}
+
+/* Hover */
+#shipping_method li:hover,
+ul.woocommerce-shipping-methods li:hover,
 ul.woocommerce-shipping-rates li:hover {
-	border-color: #b0c8e0;
-	box-shadow: 0 1px 4px rgba( 0, 0, 0, 0.06 );
+	background: var( --bbi-card-hover-bg );
 }
 
-/* Selected state — CSS `:has()` for modern browsers, JS adds .bbi-selected as fallback */
-ul.woocommerce-shipping-rates li:has( input[name^="shipping_method"]:checked ),
+/* Selected state — blue left accent + light background */
+#shipping_method li:has( input:checked ),
+ul.woocommerce-shipping-methods li:has( input:checked ),
+ul.woocommerce-shipping-rates li:has( input:checked ),
+#shipping_method li.bbi-selected,
+ul.woocommerce-shipping-methods li.bbi-selected,
 ul.woocommerce-shipping-rates li.bbi-selected {
-	border-color: #007cba;
-	background: #f0f8ff;
-	box-shadow: 0 0 0 2px rgba( 0, 124, 186, 0.12 );
+	background: var( --bbi-card-selected-bg );
+	border-color: var( --bbi-accent );
+	z-index: 1;
+	box-shadow: inset 4px 0 0 var( --bbi-accent );
 }
 
+#shipping_method li label,
+ul.woocommerce-shipping-methods li label,
 ul.woocommerce-shipping-rates li label {
 	display: block;
 	cursor: pointer;
 	margin: 0;
-	font-weight: 500;
+	padding: 14px 48px 14px 16px;
 	line-height: 1.4;
+	font-weight: 400;
+	width: 100%;
+	box-sizing: border-box;
 }
 
-/* Hide the native radio button visually while keeping it accessible
-   to screen readers and keyboard navigation. */
-ul.woocommerce-shipping-rates input[name^="shipping_method"] {
-	clip: rect( 0, 0, 0, 0 );
-	clip-path: inset( 50% );
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
-	white-space: nowrap;
+/* ── Nuke ALL radio buttons ───────────────────────────────────────────── */
+/* Hide the <input> element itself.                                       */
+#shipping_method input[type="radio"],
+#shipping_method .shipping_method,
+ul.woocommerce-shipping-methods input[type="radio"],
+ul.woocommerce-shipping-rates input[type="radio"],
+.woocommerce ul#shipping_method input[type="radio"] {
+	position: absolute !important;
+	width: 0 !important;
+	height: 0 !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	overflow: hidden !important;
+	clip: rect( 0, 0, 0, 0 ) !important;
+	clip-path: inset( 100% ) !important;
+	border: 0 !important;
+	opacity: 0 !important;
+	appearance: none !important;
+	-webkit-appearance: none !important;
+	pointer-events: none !important;
 }
 
-/* Keyboard-focus ring on the card when the hidden radio receives focus */
-ul.woocommerce-shipping-rates li:has( input[name^="shipping_method"]:focus-visible ),
+/* Kill theme-drawn radio indicators on LABELS (where themes actually draw them).
+   <input> is a void element and cannot have ::before/::after pseudo-elements.
+   Themes draw custom radios on label::before / label::after instead.            */
+#shipping_method li label::before,
+#shipping_method li label::after,
+ul.woocommerce-shipping-methods li label::before,
+ul.woocommerce-shipping-methods li label::after,
+ul.woocommerce-shipping-rates li label::before,
+ul.woocommerce-shipping-rates li label::after,
+.woocommerce-shipping-totals label::before,
+.woocommerce-shipping-totals label::after {
+	display: none !important;
+	content: none !important;
+	width: 0 !important;
+	height: 0 !important;
+	background: none !important;
+	border: none !important;
+	box-shadow: none !important;
+}
+
+/* ── Checkmark indicator for the selected card ────────────────────────── */
+/* A small circle + checkmark on the right side of the selected option.  */
+#shipping_method li::after,
+ul.woocommerce-shipping-methods li::after,
+ul.woocommerce-shipping-rates li::after {
+	content: "" !important;
+	display: block !important;
+	position: absolute !important;
+	top: 50% !important;
+	right: 16px !important;
+	transform: translateY( -50% ) !important;
+	width: 22px !important;
+	height: 22px !important;
+	border-radius: 50% !important;
+	border: 2px solid var( --bbi-indicator-border ) !important;
+	background: var( --bbi-indicator-bg ) !important;
+	transition: border-color 0.15s ease, background 0.15s ease;
+	pointer-events: none !important;
+	box-sizing: border-box !important;
+	box-shadow: none !important;
+}
+
+#shipping_method li:has( input:checked )::after,
+ul.woocommerce-shipping-methods li:has( input:checked )::after,
+ul.woocommerce-shipping-rates li:has( input:checked )::after,
+#shipping_method li.bbi-selected::after,
+ul.woocommerce-shipping-methods li.bbi-selected::after,
+ul.woocommerce-shipping-rates li.bbi-selected::after {
+	border-color: var( --bbi-accent ) !important;
+	background: var( --bbi-accent ) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M3.5 8.5 6.5 11.5 12.5 5'/%3E%3C/svg%3E") center / 14px no-repeat !important;
+}
+
+/* Keyboard-focus ring */
+#shipping_method li:has( input:focus-visible ),
+ul.woocommerce-shipping-methods li:has( input:focus-visible ),
+ul.woocommerce-shipping-rates li:has( input:focus-visible ),
+#shipping_method li:focus-within,
+ul.woocommerce-shipping-methods li:focus-within,
 ul.woocommerce-shipping-rates li:focus-within {
-	outline: 2px solid #007cba;
-	outline-offset: 2px;
+	outline: 2px solid var( --bbi-accent );
+	outline-offset: -2px;
+	z-index: 2;
 }
 
-/* Reveal detail panel for the selected classic-checkout option.
-   Three complementary selectors for maximum browser compatibility:
-   1. Adjacent-sibling combinator — works in all modern browsers, no :has() needed.
-   2. :has() — modern browsers, higher specificity.
-   3. .bbi-selected — JS-added class fallback (checkout.js). */
+/* Reveal accordion details only for the selected option */
 input[name^="shipping_method"]:checked + label .bbi-shipping-details,
-ul.woocommerce-shipping-rates li:has( input[name^="shipping_method"]:checked ) .bbi-shipping-details,
+#shipping_method li:has( input:checked ) .bbi-shipping-details,
+ul.woocommerce-shipping-methods li:has( input:checked ) .bbi-shipping-details,
+ul.woocommerce-shipping-rates li:has( input:checked ) .bbi-shipping-details,
+#shipping_method li.bbi-selected .bbi-shipping-details,
+ul.woocommerce-shipping-methods li.bbi-selected .bbi-shipping-details,
 ul.woocommerce-shipping-rates li.bbi-selected .bbi-shipping-details {
 	display: block;
 }
 
-/* ── Full-width shipping row (classic checkout) ────────────────────────── */
-/* Applied by checkout.js */
+/* ── Full-width shipping row (classic checkout table) ──────────────── */
 .bbi-shipping-th-hidden {
 	display: none !important;
 }
 
 td.bbi-shipping-expanded {
-	padding-left: 0;
+	padding: 0 !important;
 }
 
 .bbi-shipping-row-label {
 	display: block;
 	font-weight: 700;
-	margin-bottom: 10px;
+	margin-bottom: 12px;
 	font-size: 1em;
 	color: inherit;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
    BLOCKS CHECKOUT  (WooCommerce Blocks / Gutenberg)
-   Targets <li> items containing a Blocks shipping radio input.
-   The input name follows `radio-control-wc-shipping-rates-*`.
    ══════════════════════════════════════════════════════════════════════════ */
+
+ul.wc-block-components-radio-control,
+ul.wc-block-components-shipping-rates-control__package {
+	list-style: none !important;
+	padding: 0 !important;
+	margin: 0 !important;
+}
 
 li:has( > input[name^="radio-control-wc-shipping-rates"] ),
 li:has( > div > input[name^="radio-control-wc-shipping-rates"] ) {
-	border: 1px solid #e0e0e0;
-	border-radius: 6px;
-	margin-bottom: 8px;
-	padding: 10px 14px 10px 12px;
+	display: block;
+	position: relative;
+	border: 1px solid var( --bbi-card-border );
+	background: var( --bbi-card-bg );
+	margin-bottom: -1px;
+	padding: 14px 16px;
 	cursor: pointer;
-	transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+	transition: background 0.15s ease, border-color 0.15s ease;
 	list-style: none;
+}
+
+li:has( > input[name^="radio-control-wc-shipping-rates"] ):first-child,
+li:has( > div > input[name^="radio-control-wc-shipping-rates"] ):first-child {
+	border-radius: 8px 8px 0 0;
+}
+
+li:has( > input[name^="radio-control-wc-shipping-rates"] ):last-child,
+li:has( > div > input[name^="radio-control-wc-shipping-rates"] ):last-child {
+	border-radius: 0 0 8px 8px;
+	margin-bottom: 0;
+}
+
+li:has( > input[name^="radio-control-wc-shipping-rates"] ):only-child,
+li:has( > div > input[name^="radio-control-wc-shipping-rates"] ):only-child {
+	border-radius: 8px;
 }
 
 li:has( > input[name^="radio-control-wc-shipping-rates"] ):hover,
 li:has( > div > input[name^="radio-control-wc-shipping-rates"] ):hover {
-	border-color: #b0c8e0;
-	box-shadow: 0 1px 4px rgba( 0, 0, 0, 0.06 );
+	background: var( --bbi-card-hover-bg );
 }
 
-/* Selected state – :has() modern browsers + .bbi-selected JS fallback */
 li:has( > input[name^="radio-control-wc-shipping-rates"]:checked ),
 li:has( > div > input[name^="radio-control-wc-shipping-rates"]:checked ),
 li.bbi-selected {
-	border-color: #007cba;
-	background: #f0f8ff;
-	box-shadow: 0 0 0 2px rgba( 0, 124, 186, 0.12 );
+	background: var( --bbi-card-selected-bg );
+	border-color: var( --bbi-accent );
+	z-index: 1;
+	box-shadow: inset 3px 0 0 var( --bbi-accent );
 }
 
-/* Focus ring for keyboard navigation */
+/* Hide Blocks radio buttons */
+input[name^="radio-control-wc-shipping-rates"],
+.wc-block-components-radio-control input[type="radio"] {
+	position: absolute !important;
+	width: 0 !important;
+	height: 0 !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	overflow: hidden !important;
+	clip: rect( 0, 0, 0, 0 ) !important;
+	clip-path: inset( 100% ) !important;
+	border: 0 !important;
+	opacity: 0 !important;
+	appearance: none !important;
+	-webkit-appearance: none !important;
+	pointer-events: none !important;
+}
+
+/* Kill theme-drawn pseudo-element radios on labels and inputs */
+input[name^="radio-control-wc-shipping-rates"]::before,
+input[name^="radio-control-wc-shipping-rates"]::after,
+.wc-block-components-radio-control input[type="radio"]::before,
+.wc-block-components-radio-control input[type="radio"]::after,
+.wc-block-components-radio-control label::before,
+.wc-block-components-radio-control label::after,
+.wc-block-components-radio-control__option label::before,
+.wc-block-components-radio-control__option label::after {
+	display: none !important;
+	content: none !important;
+	width: 0 !important;
+	height: 0 !important;
+	background: none !important;
+	border: none !important;
+	box-shadow: none !important;
+}
+
+/* Checkmark indicator for Blocks options */
+li:has( > input[name^="radio-control-wc-shipping-rates"] )::after,
+li:has( > div > input[name^="radio-control-wc-shipping-rates"] )::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	right: 16px;
+	transform: translateY( -50% );
+	width: 22px;
+	height: 22px;
+	border-radius: 50%;
+	border: 2px solid var( --bbi-indicator-border );
+	background: var( --bbi-indicator-bg );
+	transition: border-color 0.15s ease, background 0.15s ease;
+	pointer-events: none;
+	box-sizing: border-box;
+}
+
+li:has( > input[name^="radio-control-wc-shipping-rates"]:checked )::after,
+li:has( > div > input[name^="radio-control-wc-shipping-rates"]:checked )::after,
+li.bbi-selected::after {
+	border-color: var( --bbi-accent );
+	background: var( --bbi-accent ) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' d='M3.5 8.5 6.5 11.5 12.5 5'/%3E%3C/svg%3E") center / 14px no-repeat;
+}
+
+/* Focus ring */
 li:has( > input[name^="radio-control-wc-shipping-rates"]:focus-visible ),
 li:has( > div > input[name^="radio-control-wc-shipping-rates"]:focus-visible ) {
-	outline: 2px solid #007cba;
-	outline-offset: 2px;
+	outline: 2px solid var( --bbi-accent );
+	outline-offset: -2px;
+	z-index: 2;
 }
 
-/* Remove default list styles from the Blocks radio-control list */
-ul.wc-block-components-radio-control,
-ul.wc-block-components-shipping-rates-control__package {
-	padding: 4px 0 0;
-	margin: 0;
-}
-
-/* WC Blocks renders a label that wraps name + price side-by-side;
-   let it stay as-is but ensure the label area is block-level. */
 li:has( input[name^="radio-control-wc-shipping-rates"] ) label {
-	display: flex;
+	display: block;
 	width: 100%;
 	cursor: pointer;
 	margin: 0;
-	font-weight: 500;
-	align-items: center;
+	font-weight: 400;
 }
 
-/* Reveal detail panel for the selected Blocks checkout option */
+/* Reveal accordion details for selected Blocks option */
 li:has( > input[name^="radio-control-wc-shipping-rates"]:checked ) .bbi-shipping-details,
 li:has( > div > input[name^="radio-control-wc-shipping-rates"]:checked ) .bbi-shipping-details,
 li.bbi-selected .bbi-shipping-details {
@@ -158,57 +371,92 @@ li.bbi-selected .bbi-shipping-details {
    SHARED  (applies to both classic and Blocks checkout)
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Summary bar (always visible: logo + delivery estimate) ─────────────── */
-.bbi-shipping-summary {
-	display: block;
-	margin-top: 5px;
-	line-height: 1.4;
+/* ── Card header row: logo + name on left, price + estimate on right ──── */
+.bbi-shipping-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	width: 100%;
+}
+
+.bbi-shipping-header-left {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.bbi-shipping-header-right {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	flex-shrink: 0;
 }
 
 /* ── Logo ──────────────────────────────────────────────────────────────── */
 .bbi-shipping-logo {
-	display: inline-block;
-	max-height: 24px;
+	display: block;
+	height: 20px;
 	width: auto;
-	vertical-align: middle;
-	margin-right: 6px;
-	margin-top: -2px;
+	flex-shrink: 0;
 }
 
-/* ── Delivery estimate ─────────────────────────────────────────────────── */
+/* ── Shipping option name ──────────────────────────────────────────────── */
+.bbi-shipping-name {
+	font-weight: 600;
+	font-size: 0.95em;
+	color: var( --bbi-text );
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* ── Price ──────────────────────────────────────────────────────────────── */
+.bbi-shipping-price {
+	font-weight: 600;
+	font-size: 0.95em;
+	color: var( --bbi-text );
+	white-space: nowrap;
+}
+
+/* ── Delivery estimate (below header) ──────────────────────────────────── */
 .bbi-delivery-estimate {
-	display: inline-block;
-	font-size: 0.82em;
-	color: #555;
-	font-style: italic;
-	vertical-align: middle;
+	display: block;
+	font-size: 0.8em;
+	color: var( --bbi-text-muted );
+	margin-top: 4px;
+	line-height: 1.3;
 }
 
-/* ── Description & pickup ──────────────────────────────────────────────── */
+/* ── Details panel (accordion body) ────────────────────────────────────── */
+.bbi-shipping-details {
+	display: none;
+	margin-top: 12px;
+	padding-top: 12px;
+	border-top: 1px solid var( --bbi-divider );
+	animation: bbi-fade-in 0.18s ease;
+}
+
 .bbi-shipping-desc {
 	display: block;
-	font-size: 0.82em;
-	color: #666;
-	margin-top: 6px;
-	line-height: 1.45;
+	font-size: 0.85em;
+	color: var( --bbi-text-muted );
+	line-height: 1.5;
 }
 
 .bbi-pickup-hint {
 	display: block;
-	font-size: 0.82em;
+	font-size: 0.85em;
 	font-weight: 600;
-	color: #444;
+	color: var( --bbi-text-secondary );
 	margin-top: 6px;
+	line-height: 1.5;
 }
 
-/* ── Details panel ─────────────────────────────────────────────────────── */
-/* Hidden by default; revealed for the selected option only (CSS + JS).     */
-.bbi-shipping-details {
+/* Legacy .bbi-shipping-summary — no longer used, but hide if present */
+.bbi-shipping-summary {
 	display: none;
-	margin-top: 10px;
-	padding-top: 10px;
-	border-top: 1px solid #d0e4f0;
-	animation: bbi-fade-in 0.18s ease;
 }
 
 @keyframes bbi-fade-in {
@@ -218,7 +466,7 @@ li.bbi-selected .bbi-shipping-details {
 
 @media ( prefers-reduced-motion: no-preference ) {
 	@keyframes bbi-fade-in {
-		from { opacity: 0; transform: translateY( -3px ); }
+		from { opacity: 0; transform: translateY( -4px ); }
 		to   { opacity: 1; transform: translateY( 0 ); }
 	}
 }

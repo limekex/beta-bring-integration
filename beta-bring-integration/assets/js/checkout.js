@@ -1,26 +1,18 @@
 /**
- * Bring Shipping – checkout / cart enhancements.
+ * Bring Shipping – checkout / cart accordion card selector.
  *
- * 1. Makes the shipping table row span the full table width so the
- *    options have more room to breathe.
- * 2. Styles each shipping option as a selectable card and highlights
- *    the selected one. The CSS `:has()` rule handles this in modern
- *    browsers; the `.bbi-selected` class added here is the fallback
- *    for browsers that don't support `:has()`.
- * 3. Shows the enriched details panel (logo, delivery estimate,
- *    description, closest pickup point) only for the selected option.
+ * 1. Makes the shipping table row span the full table width.
+ * 2. Each option is a full-width clickable card — clicking anywhere
+ *    on the card selects the underlying radio button.
+ * 3. CSS `:has()` drives the selected highlight in modern browsers;
+ *    `.bbi-selected` is the JS fallback.
+ * 4. The accordion details panel expands only for the selected option.
  */
 ( function ( $ ) {
 	'use strict';
 
 	/**
-	 * Expand the shipping <tr> so it spans the full table width.
-	 *
-	 * WooCommerce renders shipping as a 2-column table row:
-	 *   <th>Shipping</th> <td>…options…</td>
-	 *
-	 * We move the heading text into the <td>, hide the <th>, and set
-	 * colspan="2" on the <td> so the options have the full row width.
+	 * Expand the shipping <tr> to span the full table width.
 	 */
 	function expandShippingRow() {
 		$( 'tr.shipping, tr.woocommerce-shipping-totals' ).each( function () {
@@ -28,30 +20,33 @@
 			var $th = $tr.children( 'th' );
 			var $td = $tr.children( 'td' );
 
-			// Skip if already processed or no standard 2-cell structure.
 			if ( ! $th.length || ! $td.length || $td.hasClass( 'bbi-shipping-expanded' ) ) {
 				return;
 			}
 
-			// Prepend the heading text as an in-cell label.
 			var headingText = $th.text().trim();
 			if ( headingText ) {
 				$td.prepend( $( '<span class="bbi-shipping-row-label"></span>' ).text( headingText ) );
 			}
 
-			// Widen the cell and hide the now-redundant heading cell.
 			$td.addClass( 'bbi-shipping-expanded' ).attr( 'colspan', 2 );
 			$th.addClass( 'bbi-shipping-th-hidden' );
 		} );
 	}
 
 	/**
-	 * Sync the .bbi-selected class on <li> items to reflect which
-	 * shipping radio is checked.  This drives the card highlight and
-	 * detail-panel visibility for browsers that lack :has() support.
+	 * Get all shipping method list containers
+	 * (WC uses #shipping_method / .woocommerce-shipping-methods / .woocommerce-shipping-rates).
+	 */
+	function getShippingLists() {
+		return $( '#shipping_method, ul.woocommerce-shipping-methods, ul.woocommerce-shipping-rates' );
+	}
+
+	/**
+	 * Sync the .bbi-selected class on <li> items.
 	 */
 	function syncSelectedCard() {
-		var $lists = $( 'ul.woocommerce-shipping-rates' );
+		var $lists = getShippingLists();
 		if ( ! $lists.length ) {
 			return;
 		}
@@ -59,25 +54,83 @@
 		$lists.each( function () {
 			var $ul = $( this );
 			$ul.children( 'li' ).removeClass( 'bbi-selected' );
-			$ul.find( 'input[name^="shipping_method"]:checked' ).closest( 'li' ).addClass( 'bbi-selected' );
+			$ul.find( 'input[type="radio"]:checked, input[name^="shipping_method"]:checked' ).closest( 'li' ).addClass( 'bbi-selected' );
+		} );
+	}
+
+	/**
+	 * Force-hide radio inputs AND theme-drawn pseudo-element radios via inline styles.
+	 * Some themes / WC debug mode add inline display overrides.
+	 * Themes draw custom radios on label::before / label::after — we inject
+	 * a <style> tag to kill those too.
+	 */
+	function nukeRadios() {
+		// Hide the actual <input> elements.
+		getShippingLists().find( 'input[type="radio"]' ).each( function () {
+			this.style.setProperty( 'position', 'absolute', 'important' );
+			this.style.setProperty( 'width', '0', 'important' );
+			this.style.setProperty( 'height', '0', 'important' );
+			this.style.setProperty( 'opacity', '0', 'important' );
+			this.style.setProperty( 'pointer-events', 'none', 'important' );
+			this.style.setProperty( 'overflow', 'hidden', 'important' );
+			this.style.setProperty( 'clip', 'rect(0,0,0,0)', 'important' );
+		} );
+
+		// Inject a <style> tag to kill label::before / label::after pseudo-element radios,
+		// which cannot be styled via inline JavaScript.
+		if ( ! document.getElementById( 'bbi-nuke-label-radios' ) ) {
+			var style = document.createElement( 'style' );
+			style.id = 'bbi-nuke-label-radios';
+			style.textContent =
+				'#shipping_method li label::before,' +
+				'#shipping_method li label::after,' +
+				'.woocommerce-shipping-methods li label::before,' +
+				'.woocommerce-shipping-methods li label::after,' +
+				'.woocommerce-shipping-rates li label::before,' +
+				'.woocommerce-shipping-rates li label::after{' +
+				'display:none!important;content:none!important;' +
+				'width:0!important;height:0!important;' +
+				'background:none!important;border:none!important;' +
+				'box-shadow:none!important}';
+			document.head.appendChild( style );
+		}
+	}
+
+	/**
+	 * Make entire <li> clickable — selecting the radio inside.
+	 */
+	function bindCardClick() {
+		$( document ).on( 'click', '#shipping_method li, ul.woocommerce-shipping-methods li, ul.woocommerce-shipping-rates li', function ( e ) {
+			// Don't interfere with links or inputs inside the card.
+			if ( $( e.target ).is( 'a, input, select, textarea' ) ) {
+				return;
+			}
+
+			var $radio = $( this ).find( 'input[type="radio"]' );
+			if ( $radio.length && ! $radio.prop( 'checked' ) ) {
+				$radio.prop( 'checked', true ).trigger( 'change' );
+			}
 		} );
 	}
 
 	function bindShippingChange() {
-		$( document ).on( 'change', 'input[name^="shipping_method"]', function () {
+		$( document ).on( 'change', '#shipping_method input[type="radio"], input[name^="shipping_method"]', function () {
 			syncSelectedCard();
 		} );
 	}
 
 	$( function () {
 		expandShippingRow();
+		nukeRadios();
 		syncSelectedCard();
+		bindCardClick();
 		bindShippingChange();
 	} );
 
 	// Re-apply after WooCommerce fragment / AJAX updates.
 	$( document.body ).on( 'updated_cart_totals updated_checkout wc_fragments_refreshed', function () {
 		expandShippingRow();
+		nukeRadios();
 		syncSelectedCard();
 	} );
 } )( jQuery );
